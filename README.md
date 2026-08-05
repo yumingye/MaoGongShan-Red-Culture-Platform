@@ -245,9 +245,12 @@ Copy-Item frontend\.env.example frontend\.env
 ```powershell
 npm run lint
 npm run test
+$env:VITE_API_BASE_URL="https://your-api.example.com"
 npm run build
 npm run check:deploy
 ```
+
+生产构建必须显式提供 HTTPS API 地址；若配置为 `localhost` 或 `127.0.0.1`，构建会直接失败，避免将本地接口误发布到线上。
 
 浏览器布局巡检：
 
@@ -282,9 +285,15 @@ npm run check:browser
 
 ## 部署
 
-仓库根目录的 `render.yaml` 定义前端 Static Site 和后端 Python Web Service。部署前应核对服务名、前后端公网地址、CORS 来源和只读设置，并在平台控制台配置真实密钥；不要把密钥写入 Blueprint 或仓库。
+推荐生产架构为：
 
-详细步骤参见 [Render 部署报告](docs/RENDER_DEPLOYMENT_REPORT.md)。
+- 前端：Vercel，项目根目录选择 `frontend`。
+- 后端：Render 或 Railway，使用仓库根目录配置。
+- 数据库：公开只读实例启动时将仓库中的种子 SQLite 复制到托管平台临时目录。
+
+生产构建必须设置 HTTPS `VITE_API_BASE_URL`，后端必须把最终 Vercel Origin 写入 `CORS_ORIGINS`。代码已经提供 `frontend/vercel.json`、`render.yaml` 和 `railway.toml`。
+
+完整上线顺序、环境变量、验证命令和故障排查参见 [生产部署指南](docs/DEPLOYMENT.md)。
 
 ## 当前限制
 

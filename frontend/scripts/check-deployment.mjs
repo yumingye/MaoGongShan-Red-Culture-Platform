@@ -22,6 +22,8 @@ function walkFiles(directory) {
 }
 
 requireFile(path.join(projectRoot, 'render.yaml'), 'Render Blueprint')
+requireFile(path.join(projectRoot, 'railway.toml'), 'Railway 配置')
+requireFile(path.join(frontendRoot, 'vercel.json'), 'Vercel 配置')
 requireFile(path.join(projectRoot, '.env.example'), '根环境变量示例')
 requireFile(path.join(projectRoot, 'backend', '.env.example'), '后端环境变量示例')
 requireFile(path.join(frontendRoot, '.env.example'), '前端环境变量示例')
@@ -37,18 +39,13 @@ const blueprintPath = path.join(projectRoot, 'render.yaml')
 if (fs.existsSync(blueprintPath)) {
   const blueprint = fs.readFileSync(blueprintPath, 'utf8')
   for (const required of [
-    'runtime: static',
     'runtime: python',
     'healthCheckPath: /api/health',
-    'source: /*',
-    'destination: /index.html',
     'uvicorn backend.app:app --host 0.0.0.0 --port $PORT',
-    'VITE_API_BASE_URL',
-    'https://maogongshan-red-culture-api-yumingye.onrender.com',
+    'ENVIRONMENT',
+    'production',
     'CORS_ORIGINS',
-    'https://maogongshan-red-culture-web-yumingye.onrender.com',
-    'FRONTEND_HOST',
-    'maogongshan-red-culture-web-yumingye.onrender.com'
+    'sync: false'
   ]) {
     if (!blueprint.includes(required)) failures.push(`render.yaml 缺少：${required}`)
   }
@@ -57,6 +54,40 @@ if (fs.existsSync(blueprintPath)) {
   }
   if (/value:\s*https?:\/\/(?:localhost|127\.0\.0\.1)/i.test(blueprint)) {
     failures.push('render.yaml 的生产环境变量包含 localhost 地址')
+  }
+}
+
+const vercelPath = path.join(frontendRoot, 'vercel.json')
+if (fs.existsSync(vercelPath)) {
+  const vercelConfig = JSON.parse(fs.readFileSync(vercelPath, 'utf8'))
+  if (vercelConfig.framework !== 'vite') failures.push('vercel.json framework 必须为 vite')
+  if (vercelConfig.outputDirectory !== 'dist') failures.push('vercel.json outputDirectory 必须为 dist')
+  const spaRewrite = vercelConfig.rewrites?.some(
+    (item) => item.source === '/(.*)' && item.destination === '/index.html'
+  )
+  if (!spaRewrite) failures.push('vercel.json 缺少 SPA 深层路由 Rewrite')
+}
+
+const railwayPath = path.join(projectRoot, 'railway.toml')
+if (fs.existsSync(railwayPath)) {
+  const railway = fs.readFileSync(railwayPath, 'utf8')
+  for (const required of [
+    'pip install -r backend/requirements.txt',
+    'uvicorn backend.app:app --host 0.0.0.0 --port $PORT',
+    'healthcheckPath = "/api/health"'
+  ]) {
+    if (!railway.includes(required)) failures.push(`railway.toml 缺少：${required}`)
+  }
+}
+
+const productionEnvPath = path.join(frontendRoot, '.env.production.example')
+if (fs.existsSync(productionEnvPath)) {
+  const productionEnv = fs.readFileSync(productionEnvPath, 'utf8')
+  if (!/^VITE_API_BASE_URL=https:\/\//m.test(productionEnv)) {
+    failures.push('生产环境示例缺少 HTTPS VITE_API_BASE_URL')
+  }
+  if (/https?:\/\/(?:localhost|127\.0\.0\.1)/i.test(productionEnv)) {
+    failures.push('生产环境示例包含 localhost 地址')
   }
 }
 
@@ -88,5 +119,5 @@ if (failures.length) {
 }
 
 console.log(
-  `部署检查通过：${buildFiles.length} 个构建文本资源，Render、SPA Rewrite、环境变量和本地路径均正常。`
+  `部署检查通过：${buildFiles.length} 个构建文本资源，Vercel、Render、Railway、SPA Rewrite、环境变量和本地路径均正常。`
 )

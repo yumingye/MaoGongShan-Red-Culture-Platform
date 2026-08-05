@@ -44,17 +44,21 @@ IMAGE_DIR = project_path(
 BACKEND_HOST = os.getenv("BACKEND_HOST", "0.0.0.0")
 BACKEND_PORT = int(os.getenv("PORT", os.getenv("BACKEND_PORT", "8000")))
 SERVICE_NAME = os.getenv("SERVICE_NAME", "maogongshan-api")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower()
 READ_ONLY_MODE = os.getenv("READ_ONLY_MODE", "false").lower() in {"1", "true", "yes", "on"}
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+default_cors_origins = (
+    "http://localhost:5173,http://127.0.0.1:5173"
+    if ENVIRONMENT != "production"
+    else ""
+)
 CORS_ORIGINS = [
     origin.strip()
-    for origin in os.getenv(
-        "CORS_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173",
-    ).split(",")
+    for origin in os.getenv("CORS_ORIGINS", default_cors_origins).split(",")
     if origin.strip()
 ]
 FRONTEND_HOST = os.getenv("FRONTEND_HOST", "").strip().removeprefix("https://").removeprefix("http://").rstrip("/")
-CORS_ORIGIN_REGEX = rf"^https://{re.escape(FRONTEND_HOST)}$" if FRONTEND_HOST else None
+configured_cors_regex = os.getenv("CORS_ORIGIN_REGEX", "").strip()
+CORS_ORIGIN_REGEX = configured_cors_regex or (rf"^https://{re.escape(FRONTEND_HOST)}$" if FRONTEND_HOST else None)

@@ -1516,4 +1516,4 @@ def search_suggestions(q: str = Query(default="")):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("backend.app:app", host=BACKEND_HOST, port=BACKEND_PORT, reload=True)
+    uvicorn.run("backend.app:app", host=BACKEND_HOST, port=BACKEND_PORT, reload=False)

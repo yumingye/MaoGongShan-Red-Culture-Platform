@@ -287,11 +287,11 @@ npm run check:browser
 
 推荐生产架构为：
 
-- 前端：Vercel，项目根目录选择 `frontend`。
-- 后端：Render 或 Railway，使用仓库根目录配置。
+- 前端：Netlify，使用仓库根目录的 `netlify.toml`。
+- 后端：Render，使用仓库根目录的 `render.yaml`。
 - 数据库：公开只读实例启动时将仓库中的种子 SQLite 复制到托管平台临时目录。
 
-生产构建必须设置 HTTPS `VITE_API_BASE_URL`，后端必须把最终 Vercel Origin 写入 `CORS_ORIGINS`。代码已经提供 `frontend/vercel.json`、`render.yaml` 和 `railway.toml`。
+生产构建必须在 Netlify 设置 HTTPS `VITE_API_BASE_URL`，后端必须把最终 Netlify Origin 写入 `CORS_ORIGINS`。代码已经提供 `netlify.toml`、`frontend/public/_redirects` 和 `render.yaml`。
 
 完整上线顺序、环境变量、验证命令和故障排查参见 [生产部署指南](docs/DEPLOYMENT.md)。
 

@@ -77,8 +77,7 @@ docs/screenshots/edge-*/
 # IDE and OS files
 .idea/
 .vscode/
-.vercel/
-.railway/
+.netlify/
 *.swp
 *.swo
 .DS_Store

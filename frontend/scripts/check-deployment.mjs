@@ -22,8 +22,8 @@ function walkFiles(directory) {
 }
 
 requireFile(path.join(projectRoot, 'render.yaml'), 'Render Blueprint')
-requireFile(path.join(projectRoot, 'railway.toml'), 'Railway 配置')
-requireFile(path.join(frontendRoot, 'vercel.json'), 'Vercel 配置')
+requireFile(path.join(projectRoot, 'netlify.toml'), 'Netlify 配置')
+requireFile(path.join(frontendRoot, 'public', '_redirects'), 'Netlify SPA 路由规则')
 requireFile(path.join(projectRoot, '.env.example'), '根环境变量示例')
 requireFile(path.join(projectRoot, 'backend', '.env.example'), '后端环境变量示例')
 requireFile(path.join(frontendRoot, '.env.example'), '前端环境变量示例')
@@ -57,27 +57,32 @@ if (fs.existsSync(blueprintPath)) {
   }
 }
 
-const vercelPath = path.join(frontendRoot, 'vercel.json')
-if (fs.existsSync(vercelPath)) {
-  const vercelConfig = JSON.parse(fs.readFileSync(vercelPath, 'utf8'))
-  if (vercelConfig.framework !== 'vite') failures.push('vercel.json framework 必须为 vite')
-  if (vercelConfig.outputDirectory !== 'dist') failures.push('vercel.json outputDirectory 必须为 dist')
-  const spaRewrite = vercelConfig.rewrites?.some(
-    (item) => item.source === '/(.*)' && item.destination === '/index.html'
-  )
-  if (!spaRewrite) failures.push('vercel.json 缺少 SPA 深层路由 Rewrite')
+const netlifyPath = path.join(projectRoot, 'netlify.toml')
+if (fs.existsSync(netlifyPath)) {
+  const netlify = fs.readFileSync(netlifyPath, 'utf8')
+  for (const required of [
+    'base = "frontend"',
+    'command = "npm run build"',
+    'publish = "dist"',
+    'from = "/*"',
+    'to = "/index.html"',
+    'status = 200'
+  ]) {
+    if (!netlify.includes(required)) failures.push(`netlify.toml 缺少：${required}`)
+  }
 }
 
-const railwayPath = path.join(projectRoot, 'railway.toml')
-if (fs.existsSync(railwayPath)) {
-  const railway = fs.readFileSync(railwayPath, 'utf8')
-  for (const required of [
-    'pip install -r backend/requirements.txt',
-    'uvicorn backend.app:app --host 0.0.0.0 --port $PORT',
-    'healthcheckPath = "/api/health"'
-  ]) {
-    if (!railway.includes(required)) failures.push(`railway.toml 缺少：${required}`)
+const redirectsPath = path.join(frontendRoot, 'public', '_redirects')
+if (fs.existsSync(redirectsPath)) {
+  const redirects = fs.readFileSync(redirectsPath, 'utf8')
+  if (!/^\/\*\s+\/index\.html\s+200\s*$/m.test(redirects)) {
+    failures.push('frontend/public/_redirects 缺少 SPA 200 回退规则')
   }
+}
+
+const builtRedirectsPath = path.join(distRoot, '_redirects')
+if (fs.existsSync(distRoot)) {
+  requireFile(builtRedirectsPath, '构建产物中的 Netlify SPA 路由规则')
 }
 
 const productionEnvPath = path.join(frontendRoot, '.env.production.example')
@@ -119,5 +124,5 @@ if (failures.length) {
 }
 
 console.log(
-  `部署检查通过：${buildFiles.length} 个构建文本资源，Vercel、Render、Railway、SPA Rewrite、环境变量和本地路径均正常。`
+  `部署检查通过：${buildFiles.length} 个构建文本资源，Netlify、Render、SPA Rewrite、环境变量和本地路径均正常。`
 )

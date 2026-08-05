@@ -30,7 +30,7 @@ foreach ($folder in @("frontend", "backend", "database", "assets", "docs", "scri
 }
 
 foreach ($file in @(
-    "README.md", ".gitignore", ".env.example", "LICENSE", "render.yaml", "railway.toml",
+    "README.md", ".gitignore", ".env.example", "LICENSE", "netlify.toml", "render.yaml",
     "start.bat", "stop.bat", "package-project.bat"
 )) {
     $source = Join-Path $Root $file

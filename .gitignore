@@ -37,6 +37,11 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.tox/
+.nox/
+.hypothesis/
+.coverage
+htmlcov/
 
 # Logs and runtime files
 *.log
@@ -47,18 +52,27 @@ frontend/*.log
 *.temp
 *.bak
 *.backup
+*.db-journal
+*.db-shm
+*.db-wal
 
 # Generated artifacts
 dist/
 build/
 coverage/
 .cache/
+.eslintcache
+.parcel-cache/
 *.zip
 maogongshan-github-ready/
 maogongshan-red-culture-platform/
 maogongshan-red-culture-platform.zip
 docs/screenshots/edge-*/
 .runtime/
+.backup/
+.package-validation/
+.agents/
+.codex/
 
 # IDE and OS files
 .idea/
@@ -70,9 +84,8 @@ Thumbs.db
 
 # Private source documents and local-only folders
 backend/private/
+backend/static/images/
 docs/private/
-个人+山软寻脉·毛公山数字调研实践团+普通立项/
-山软寻脉·毛公山数字调研实践团+于茗烨.docx
 /毛公山照片/
 *.docx
 *.doc

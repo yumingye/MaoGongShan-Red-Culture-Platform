@@ -86,6 +86,6 @@ def import_public_project_doc(path: Path) -> None:
 
 
 if __name__ == "__main__":
-    default_path = Path(__file__).resolve().parent.parent / "docs" / "山软寻脉·毛公山数字调研实践团+于茗烨.docx"
+    default_path = Path(__file__).resolve().parent.parent / "docs" / "private" / "project-materials.docx"
     target = Path(sys.argv[1]) if len(sys.argv) > 1 else default_path
     import_public_project_doc(target)

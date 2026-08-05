@@ -1,124 +1,190 @@
-# 青岛市城阳区毛公山红色文化数字资源平台
+# 毛公山红色文化数字资源平台
 
-面向社会实践展示、课程答辩与公众浏览的红色文化数字平台。项目以毛公山和城阳区文化资源为核心，同时设置党史学习、山东红色文化、青岛红色记忆、山东大学软件学院实践专题。平台坚持区分地方史实、全国党史拓展、当代实景和项目自制图解，所有党史媒体均保存来源、类型和章节关联信息。
+<p align="center">
+  <strong>面向红色文化调研、数字化保护、公众传播与研学实践的全栈数字平台</strong>
+</p>
 
-项目作者：于茗烨
+<p align="center">
+  <a href="https://github.com/yumingye/MaoGongShan-Red-Culture-Platform"><img alt="Repository" src="https://img.shields.io/badge/GitHub-MaoGongShan--Red--Culture--Platform-181717?logo=github"></a>
+  <img alt="Vue" src="https://img.shields.io/badge/Vue-3.5-42b883?logo=vuedotjs&logoColor=white">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white">
+  <img alt="SQLite" src="https://img.shields.io/badge/SQLite-3-003b57?logo=sqlite&logoColor=white">
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/Code%20License-MIT-blue"></a>
+</p>
 
-所属单位：山东大学软件学院
+## 项目摘要
 
-项目用途：大学生社会实践成果展示、红色文化数字化保护与教学演示
+毛公山红色文化数字资源平台是山东大学软件学院毛公山红色文化调研社会实践的数字化成果。项目围绕青岛市城阳区毛公山及周边红色文化资源，开展现场走访、图像采集、公开资料核验、结构化数据整理和数字传播实践，形成集文化展示、党史学习、资源检索、地图导览、图文微课与知识问答于一体的 Web 平台。
+
+平台强调“地方调研资料、全国党史拓展、当代实景影像、项目自制图解”四类内容的边界，通过来源字段、核验状态、版权说明和安全媒体组件提升资料的可追溯性。项目既服务社会实践成果展示与课程答辩，也可作为地方红色文化资源数字化组织、传播和研学设计的工程案例。
 
 ## 项目背景
 
-本项目源于山东大学软件学院毛公山红色文化调研社会实践。团队围绕青岛市城阳区毛公山及周边红色文化资源开展现场走访、资料整理与数字化传播研究，将调研照片、历史资料、研学内容和实践成果组织为可检索、可浏览、可持续维护的数字文化平台。
+| 项目要素 | 内容 |
+| --- | --- |
+| 实践单位 | 山东大学软件学院 |
+| 实践主题 | 毛公山红色文化资源调研与数字化传播 |
+| 调研区域 | 山东省青岛市城阳区毛公山及周边区域 |
+| 建设目标 | 以数字技术支持红色文化资料整理、公众传播、研学导览与成果沉淀 |
+| 主要受众 | 社会实践团队、学生、教师、游客及地方文化研究者 |
+| 项目性质 | 教育、研究与公益展示；不替代地方志、档案馆等权威史料 |
 
-平台既服务于社会实践成果展示和课程答辩，也希望以规范的数据来源记录、响应式网页和开放的工程结构，为后续红色文化数字化保护、地方文化传播及教学应用提供可复用基础。
+### 研究与实践目标
 
-## 主要功能
+1. 对毛公山相关照片、路线、景点、文化叙事和实践过程进行结构化归档。
+2. 探索红色文化内容在响应式网页、地图导览和交互学习中的传播方式。
+3. 建立包含来源、版权与核验状态的数据记录机制，降低资料误用风险。
+4. 验证前后端分离、SQLite 知识库和本地检索问答在轻量文化平台中的可行性。
+5. 形成可复现、可扩展、适合 GitHub 协作维护的开源工程样例。
 
-- 毛公山概览、自然风光、景点导览和研学路线。
-- 党史文章、历史事件、红色人物、红色精神与交互时间轴。
-- 图片影像馆、数字资源库、音频讲解和图文微课。
-- 关键词搜索、分类筛选、分页、收藏和最近浏览。
-- 基于 SQLite 知识库的本地检索式智能问答。
-- 高德地图 Web JS API 导览；未配置 Key 时自动使用本地静态导览。
-- 山东大学软件学院社会实践、调研日志、成果和团队专题。
-- 管理员登录及历史资料、人物、资源和图片的基础管理。
-- 图片加载失败、接口异常、地图缺少 Key 和深层路由的稳定降级。
-- GET 请求失败时自动重试，并可使用最近一次成功缓存或公开本地基础数据。
-- 页面级错误边界、分类图片备用资源和受限环境复制链接降级。
+## 核心功能
+
+| 模块 | 功能说明 |
+| --- | --- |
+| 毛公山概览 | 展示地理环境、名称由来、自然风光、文化价值和游览建议 |
+| 党史学习 | 提供党史阶段、历史事件、人物资料、红色精神专题和交互时间轴 |
+| 数字资源库 | 支持文献、图片、音频、实践成果等资源的分类、搜索与详情浏览 |
+| 全景图库 | 展示现场调研照片及缩略图、移动端图、详情图等多尺寸资源 |
+| 地图导览 | 提供景点点位、分类筛选和研学路线；未配置地图 Key 时自动降级 |
+| 实践成果 | 呈现调研日志、实践计划、团队专题、成果材料与方法总结 |
+| 智能问答 | 基于 SQLite 知识库进行本地检索式问答，并返回相关资料来源 |
+| 个性化浏览 | 提供关键词搜索、收藏、最近浏览和相关推荐 |
+| 内容管理 | 支持历史事件、人物、资源和图片的基础管理；公网可启用只读模式 |
+| 稳定性设计 | 提供接口重试、离线备用数据、图片降级、页面错误边界和深层路由回退 |
+
+## 数据规模
+
+当前公开数据库包含以下结构化内容：
+
+| 数据类型 | 数量 |
+| --- | ---: |
+| 历史事件 | 51 条 |
+| 历史人物 | 30 条 |
+| 数字资源 | 312 条 |
+| 图库记录 | 167 条 |
+| 调研日志 | 55 条 |
+| 音频讲解 | 22 条 |
+| 红色故事 | 55 条 |
+| 地点资源 | 32 条 |
+| 实践成果 | 30 条 |
+| 党史学习专题 | 53 篇 |
+| 地图点位 | 14 个 |
+
+> 数据数量以仓库当前公开 SQLite 数据库为准。内容持续维护时，应同步更新来源说明和核验状态。
+
+## 项目截图
+
+### 首页与党史学习
+
+| 平台首页 | 党史学习专题 |
+| --- | --- |
+| ![毛公山红色文化数字资源平台首页](docs/screenshots/home-wide-desktop.jpg) | ![党史学习专题页面](docs/screenshots/party-history-desktop.png) |
+
+### 实践调研与移动端展示
+
+| 调研成果页面 | 移动端风景页面 |
+| --- | --- |
+| ![山东大学软件学院实践调研页面](docs/screenshots/research-wide-desktop.jpg) | <img src="docs/screenshots/scenery-mobile.jpg" alt="毛公山风景页面移动端效果" width="390"> |
+
+更多桌面端和移动端截图位于 [`docs/screenshots/`](docs/screenshots/)。
+
+## 系统架构
+
+```mermaid
+flowchart LR
+    U["公众与研究人员"] --> F["Vue 3 前端"]
+    F --> R["Vue Router 页面与专题"]
+    F --> A["Axios API 层"]
+    A --> B["FastAPI 后端"]
+    B --> D["SQLite 结构化数据库"]
+    B --> K["本地知识检索与问答"]
+    F --> S["本地静态资源与备用数据"]
+    D --> M["来源、版权与核验元数据"]
+```
+
+前端负责内容展示、交互检索、响应式布局和异常降级；后端提供 REST API、数据初始化、知识检索及受保护的管理接口；SQLite 保存结构化研究资料，根目录 `assets/` 保存媒体源文件。
 
 ## 技术栈
 
-| 层级 | 技术 |
-| --- | --- |
-| 前端 | Vue 3、Vite、Vue Router、Element Plus、Axios |
-| 后端 | Python 3.10+、FastAPI、Uvicorn |
-| 数据库 | SQLite |
-| 媒体 | 本地图片资源、来源元数据、统一安全媒体组件 |
-| 测试 | Node.js 数据检查脚本、浏览器布局与深层路由巡检 |
+| 层级 | 技术 | 用途 |
+| --- | --- | --- |
+| 前端框架 | Vue 3.5、Vite 8 | 组件化页面与开发构建 |
+| 前端路由 | Vue Router 4 | 专题、详情页和深层路由 |
+| UI 与交互 | Element Plus、CSS 响应式设计 | 导航、表单、卡片与多端布局 |
+| HTTP 客户端 | Axios | API 请求、超时和错误处理 |
+| 后端框架 | Python 3.10+、FastAPI 0.115、Uvicorn | REST API 与服务运行 |
+| 数据存储 | SQLite | 轻量结构化资料库与本地知识库 |
+| 媒体处理 | Pillow | 图片导入、方向修正与多尺寸 WebP 生成 |
+| 配置管理 | python-dotenv、Vite 环境变量 | 本地开发和部署环境隔离 |
+| 质量检查 | Node.js 检查脚本、无头浏览器巡检 | 数据、图片、接口、路由和响应式验证 |
+| 部署 | Render Blueprint | 静态前端与 Python API 分离部署 |
 
 ## 项目结构
 
 ```text
 MaoGongShan-Red-Culture-Platform/
-├─ assets/                    图片、视频等源静态资源
-├─ database/
-│  ├─ maogongshan.db         公开基础 SQLite 数据
-│  └─ maogongshan_photos.json 照片导入清单
-├─ frontend/
-│  ├─ public/                 公开数据及运行时同步的静态资源
-│  ├─ scripts/                数据、图库、党史媒体和浏览器检查
-│  ├─ src/
-│  │  ├─ api/                 统一 HTTP 请求
-│  │  ├─ components/          导航、页脚、安全媒体等公共组件
-│  │  ├─ data/                前端结构化专题数据
-│  │  ├─ router/              一级、二级和详情路由
-│  │  ├─ styles/              全局设计系统和响应式样式
-│  │  └─ views/               页面组件
-│  ├─ .env.example
-│  ├─ package.json
-│  └─ vite.config.js
-├─ backend/
-│  ├─ static/                 后端上传资源
-│  ├─ app.py                  FastAPI 应用与接口
-│  ├─ config.py               集中环境配置
-│  ├─ init_db.py              幂等初始化和安全重建
-│  ├─ backup_db.py            数据库备份
-│  ├─ sanitize_public_db.py   发布前清除运行记录
-│  ├─ .env.example
-│  └─ requirements.txt
-├─ docs/                      数据来源、图片来源、测试和迭代文档
-├─ scripts/
-│  ├─ start-project.ps1       安装依赖并启动前后端
-│  ├─ stop-project.ps1        按 PID 关闭本项目进程
-│  ├─ verify-project.ps1      打包前结构与敏感文件检查
-│  └─ package-project.ps1     生成干净 ZIP
-├─ .env.example              配置索引
-├─ .gitignore
-├─ LICENSE
-├─ README.md
-├─ start.bat
-├─ stop.bat
-└─ package-project.bat
+├── frontend/                 # Vue 前端
+│   ├── public/data/          # 前端公开数据清单
+│   ├── scripts/              # 质量、资源与浏览器检查
+│   └── src/                  # 页面、组件、路由、API 与数据
+├── backend/                  # FastAPI 后端及数据维护脚本
+│   ├── app.py                # API 应用入口
+│   ├── config.py             # 环境配置
+│   └── requirements.txt      # Python 依赖
+├── database/                 # 公开 SQLite 数据库与照片清单
+├── assets/                   # 图片、视频等源静态资源
+├── docs/                     # 来源、结构、测试、部署与截图文档
+├── scripts/                  # 启停、验证和打包脚本
+├── tools/                    # 辅助分析工具
+├── .env.example              # 配置索引，不含真实密钥
+├── .gitignore
+├── CONTRIBUTING.md
+├── SECURITY.md
+├── LICENSE
+├── render.yaml
+└── README.md
 ```
 
-根目录 `assets/` 是媒体资源的唯一源码目录。安装依赖、启动、测试或构建前，`frontend/scripts/sync-assets.mjs` 会自动把它同步到被 Git 忽略的 `frontend/public/assets/`，因此现有 `/assets/...` 页面路径保持不变，也不会在仓库中保存重复图片。
+`assets/` 是媒体资源的唯一源码目录。安装依赖、启动、测试或构建前，前端脚本会将其同步到被 Git 忽略的 `frontend/public/assets/`，现有 `/assets/...` 页面地址因此保持不变，仓库也不会保存重复资源。
 
-`node_modules`、Python 虚拟环境、同步生成的前端资源、构建产物、日志、私密文档和真实 `.env` 不属于项目交付内容。
+## 项目运行教程
 
-## Windows 一键启动
+### 1. 环境要求
 
-环境要求：
+- Git
+- Python 3.10 或更高版本
+- Node.js `^20.19.0` 或 `>=22.12.0`，推荐使用当前 Node.js LTS
+- npm
 
-- Python 3.10 或更高版本，并可使用 `python` 或 `py` 命令。
-- Node.js 18 或更高版本，并可使用 `npm` 命令。
+### 2. 获取代码
 
-双击根目录的：
-
-```text
-start.bat
+```powershell
+git clone https://github.com/yumingye/MaoGongShan-Red-Culture-Platform.git
+cd MaoGongShan-Red-Culture-Platform
 ```
 
-脚本会：
+### 3. Windows 一键启动
 
-1. 检查 8000 和 5173 端口；
-2. 首次运行时创建 `backend/.venv`；
-3. 仅在依赖清单变化时安装 Python 和 npm 依赖；
-4. 在两个独立 PowerShell 窗口中启动后端和前端；
-5. 等待健康检查通过后打开浏览器。
+双击根目录的 `start.bat`，或在 PowerShell 中执行：
 
-停止项目：
-
-```text
-stop.bat
+```powershell
+.\scripts\start-project.ps1
 ```
 
-停止脚本读取 `.runtime/project-pids.json`，只结束本次脚本启动的进程树。
+脚本会创建 Python 虚拟环境、安装依赖、同步静态资源并启动前后端。启动完成后访问：
 
-## 手动启动后端
+- 前端：<http://127.0.0.1:5173>
+- 后端接口：<http://127.0.0.1:8000>
+- Swagger 文档：<http://127.0.0.1:8000/docs>
+- 健康检查：<http://127.0.0.1:8000/api/health>
 
-在项目根目录执行：
+停止服务：
+
+```powershell
+.\scripts\stop-project.ps1
+```
+
+### 4. 手动启动后端
 
 ```powershell
 python -m venv backend\.venv
@@ -127,339 +193,126 @@ backend\.venv\Scripts\python.exe -m backend.init_db
 backend\.venv\Scripts\python.exe -m uvicorn backend.app:app --host 127.0.0.1 --port 8000
 ```
 
-后端地址：
-
-- API 根地址：`http://127.0.0.1:8000`
-- Swagger 文档：`http://127.0.0.1:8000/docs`
-- 健康检查：`http://127.0.0.1:8000/api/health`
-
-## 手动启动前端
+### 5. 手动启动前端
 
 打开第二个终端：
 
 ```powershell
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-前端地址：`http://127.0.0.1:5173`
+开发环境中，Vite 将 `/api` 和 `/static` 代理到 `http://127.0.0.1:8000`。
 
-Vite 将 `/api` 和 `/static` 代理到 `http://127.0.0.1:8000`，页面代码中没有本机绝对路径。
+## 环境配置
 
-## 环境变量
-
-后端配置：
+需要本地覆盖配置时，复制示例文件：
 
 ```powershell
 Copy-Item backend\.env.example backend\.env
-```
-
-前端配置：
-
-```powershell
 Copy-Item frontend\.env.example frontend\.env
 ```
 
-主要变量：
+### 后端变量
 
 | 变量 | 说明 |
 | --- | --- |
 | `BACKEND_HOST` / `BACKEND_PORT` | 后端监听地址和端口 |
-| `PORT` | Render 自动提供的监听端口，优先级高于 `BACKEND_PORT` |
-| `DATABASE_URL` | SQLite 路径，相对路径以项目根目录解析 |
+| `DATABASE_URL` | SQLite 路径；相对路径从项目根目录解析 |
 | `UPLOAD_DIR` | 后端上传目录 |
-| `CORS_ORIGINS` | 允许访问 API 的前端地址 |
-| `FRONTEND_HOST` | Render 正式前端主机名，不包含协议；用于精确 CORS |
-| `READ_ONLY_MODE` | 公网展示实例设为 `true`，关闭后台写入与上传 |
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_TOKEN` | 本地管理配置；密码和 Token 无源码默认值 |
-| `VITE_API_BASE_URL` | 前端 API 根地址；开发环境留空使用 Vite 代理 |
-| `VITE_API_HOST` | 兼容变量；正式部署优先使用完整 HTTPS 地址 `VITE_API_BASE_URL` |
-| `VITE_PUBLIC_READ_ONLY` | 公网构建设为 `true`，后台页显示只读说明 |
-| `VITE_AMAP_KEY` | 高德地图 Web JS API Key |
-| `VITE_AMAP_SECURITY_CODE` | 高德地图安全密钥 |
-| `LLM_PROVIDER` / `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` | 可选大模型配置 |
+| `CORS_ORIGINS` | 允许访问 API 的前端 Origin，多个地址用逗号分隔 |
+| `READ_ONLY_MODE` | 公网展示建议设为 `true`，关闭写入和上传 |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_TOKEN` | 本地管理凭据，必须自行设置 |
+| `LLM_PROVIDER` / `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` | 可选外部模型配置 |
 
-真实 `.env` 已被 `.gitignore` 排除，不要提交 API Key、Token 或密码。
+### 前端变量
 
-## 数据库
+| 变量 | 说明 |
+| --- | --- |
+| `VITE_API_BASE_URL` | 正式环境 API 地址；本地开发留空使用代理 |
+| `VITE_DEV_PROXY_TARGET` | 本地代理目标，默认 `http://127.0.0.1:8000` |
+| `VITE_PUBLIC_READ_ONLY` | 公网构建只读提示开关 |
+| `VITE_AMAP_KEY` | 可选高德地图 Web JS API Key |
+| `VITE_AMAP_SECURITY_CODE` | 可选高德地图安全密钥 |
 
-公开数据库位于：
+真实 `.env`、密码、Token 和 API Key 均不得提交到 Git。
 
-```text
-database/maogongshan.db
-```
+## 构建与质量验证
 
-普通初始化是幂等操作，不会删除现有数据：
+启动后端后，在 `frontend` 目录执行：
 
 ```powershell
-backend\.venv\Scripts\python.exe -m backend.init_db
-```
-
-安全重建会先生成时间戳备份：
-
-```powershell
-backend\.venv\Scripts\python.exe -m backend.init_db --reset
-```
-
-手动备份：
-
-```powershell
-backend\.venv\Scripts\python.exe -m backend.backup_db
-```
-
-打包脚本只清理 ZIP 副本中的 `chat_records` 和 `visit_records`，不修改原数据库。
-
-## 生产构建和质量检查
-
-```powershell
-cd frontend
 npm run lint
 npm run test
 npm run build
+npm run check:deploy
 ```
 
-运行浏览器巡检前，需要先启动前后端：
+浏览器布局巡检：
 
 ```powershell
 npm run check:browser
 ```
 
-检查内容包括数据 ID、详情正文、图片路径、党史章节媒体对应关系、图库完整性、深层路由、移动端溢出和浏览器严重错误。
+当前检查覆盖：
 
-## 地图与智能问答
+- 页面源码中的占位内容、乱码和旧资源路径。
+- API 健康状态、列表数量、详情接口和本地检索问答。
+- 图库文件存在性、图片尺寸和多尺寸照片变体。
+- 党史文章、章节媒体、人物图片和来源字段的一致性。
+- 核心路由、移动端布局、横向溢出、失败图片和运行时异常。
+- Render 构建产物、环境变量和 SPA Rewrite 配置。
 
-- 未配置高德 Key 时，地图页仍显示本地点位、分类筛选、路线说明和静态导览，不会白屏。
-- 未配置大模型时，问答自动使用 SQLite 知识库检索，返回相关资料和来源。
-- 大模型和高德地图均属于可选增强项，不影响平台基础运行。
+## 数据来源、伦理与安全
 
-## 图片、视频和音频
+- 调研照片、公开历史资料和第三方媒体均应记录来源与版权说明。
+- 当代旧址、纪念馆照片和项目自制图解不标注为历史现场影像。
+- 公开数据库发布前使用 `backend/sanitize_public_db.py` 清除问答记录和访问记录。
+- 公共仓库不收录手机号、身份证号、私人邮箱、家庭住址或本机绝对路径。
+- 公网演示环境建议启用只读模式，不保存后台编辑、上传和访问行为。
+- 图片与第三方资料不当然适用 MIT License，应遵循各自来源标注的许可条件。
 
-- 核心图片源文件均存放于根目录 `assets/`，运行前自动同步到前端公开目录。
-- 图库数据和媒体清单位于 `frontend/public/data/`。
-- 项目提供的 48 张毛公山原始照片已完成只读扫描；42 张去重后照片已生成 WebP 多尺寸版本并接入首页、图库、调研、团队和活动页面。
-- 统一照片清单位于 `frontend/src/data/maogongshanPhotos.json`，可重复导入脚本为 `backend/import_photo_materials.py`。
-- 原始素材重新处理命令：`backend\.venv\Scripts\python.exe backend\import_photo_materials.py`。正常运行项目不需要重复执行。
-- 每张党史图片记录文章、章节、事件、地点、类型、说明和来源。
-- 图片来源见 [docs/IMAGE_SOURCES.md](docs/IMAGE_SOURCES.md)。
-- 本次照片整理报告见 [docs/PHOTO_IMPORT_REPORT.md](docs/PHOTO_IMPORT_REPORT.md)。
-- 资料来源见 [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md)。
-- 媒体失败时由安全媒体组件显示本地备用内容，不留下裂图或纯黑区域。
+详细资料参见：
 
-## 自动打包
+- [数据来源说明](docs/DATA_SOURCES.md)
+- [图片来源说明](docs/IMAGE_SOURCES.md)
+- [照片导入报告](docs/PHOTO_IMPORT_REPORT.md)
+- [安全说明](SECURITY.md)
 
-双击：
+## 部署
 
-```text
-package-project.bat
-```
+仓库根目录的 `render.yaml` 定义前端 Static Site 和后端 Python Web Service。部署前应核对服务名、前后端公网地址、CORS 来源和只读设置，并在平台控制台配置真实密钥；不要把密钥写入 Blueprint 或仓库。
 
-脚本会在系统临时目录创建副本，排除依赖、缓存、日志、私密目录、数据库备份和 `.env`，清理运行记录，执行结构与密钥检查，然后生成：
-
-```text
-maogongshan-red-culture-platform.zip
-```
-
-压缩包只有一层项目根目录。原项目和本地依赖不会被删除。
-
-## 上传 GitHub
-
-确认质量检查和打包成功后：
-
-```powershell
-git init
-git add .
-git commit -m "Initial release"
-git branch -M main
-git remote add origin <your-repository-url>
-git push -u origin main
-```
-
-不要上传：
-
-- `.env`
-- `node_modules`
-- `backend/.venv`
-- `dist`、缓存和日志
-- 数据库备份
-- 原始 Word 申报材料或包含个人信息的文件
-- 未获授权的大型视频
-
-这些规则已写入 `.gitignore`。
-
-## Render 公网部署
-
-仓库根目录的 `render.yaml` 定义了两个服务：
-
-- `maogongshan-red-culture-web-yumingye`：Render Static Site。
-- `maogongshan-red-culture-api-yumingye`：Render Python Web Service。
-
-Blueprint 使用两个服务名对应的公开 HTTPS 地址连接前后端：前端构建变量
-`VITE_API_BASE_URL` 指向 API 服务，后端 `CORS_ORIGINS` 和 `FRONTEND_HOST` 指向
-Static Site。前端不依赖 `localhost`，后端监听 Render 提供的 `0.0.0.0:$PORT`。
-SPA Rewrite 已配置为 `/* → /index.html`。
-
-> Render 的服务名需要全局唯一。当前配置按
-> `maogongshan-red-culture-web-yumingye.onrender.com` 和
-> `maogongshan-red-culture-api-yumingye.onrender.com` 生成公网地址。如果创建 Blueprint
-> 时提示名称已占用，需先同时修改 `render.yaml` 中的两个 `name`，并同步修改
-> `VITE_API_BASE_URL`、`CORS_ORIGINS` 和 `FRONTEND_HOST` 的域名，再重新 Apply。
-
-### 方式一：使用 Blueprint
-
-1. 在 GitHub 新建空仓库，不勾选自动生成 README。
-2. 在本项目根目录执行“上传 GitHub”一节的 Git 命令。
-3. 登录 [Render Dashboard](https://dashboard.render.com/)。
-4. 选择 **New + → Blueprint**。
-5. 授权 Render 读取刚创建的 GitHub 仓库。
-6. Blueprint Path 保持 `render.yaml`，点击 **Apply**。
-7. 在 Apply 前核对两个服务名及三个公网地址变量是否完全一致。
-8. 等待后端健康检查通过，再等待前端构建完成。
-9. 打开 Static Site 显示的 `https://...onrender.com` 地址。
-10. 访问后端 `/api/health`，确认返回 `status: ok`，再抽查首页和任一详情页刷新。
-
-Blueprint 的实际配置：
-
-| 服务 | 配置项 | 值 |
-| --- | --- | --- |
-| 后端 | Root Directory | `.` |
-| 后端 | Runtime | `Python` |
-| 后端 | Build Command | `pip install --upgrade pip && pip install -r backend/requirements.txt` |
-| 后端 | Start Command | `uvicorn backend.app:app --host 0.0.0.0 --port $PORT` |
-| 后端 | Health Check | `/api/health` |
-| 前端 | Root Directory | `frontend` |
-| 前端 | Runtime | `Static` |
-| 前端 | Build Command | `npm ci && npm run build` |
-| 前端 | Publish Directory | `./dist` |
-| 前端 | Rewrite | `/*` → `/index.html` |
-
-生产环境变量已经写在 Blueprint 中，不包含真实密钥。`ADMIN_PASSWORD` 和
-`ADMIN_TOKEN` 由 Render 生成；公开实例开启只读模式，因此后台写入和上传不会落盘。
-
-### 方式二：手动创建两个服务
-
-先创建后端 Web Service：
-
-1. **New + → Web Service**，选择 GitHub 仓库。
-2. Root Directory 留空（仓库根目录）。
-3. Runtime 选择 Python。
-4. Build Command：
-   `pip install --upgrade pip && pip install -r backend/requirements.txt`
-5. Start Command：
-   `uvicorn backend.app:app --host 0.0.0.0 --port $PORT`
-6. Health Check Path 填写 `/api/health`。
-7. 设置 `DATABASE_URL=/tmp/maogongshan.db`、`READ_ONLY_MODE=true`、
-   `SERVICE_NAME=maogongshan-api`。
-8. 部署后记录后端完整 HTTPS 地址。
-
-再创建前端 Static Site：
-
-1. **New + → Static Site**，选择同一仓库。
-2. Root Directory 填写 `frontend`。
-3. Build Command 填写 `npm ci && npm run build`。
-4. Publish Directory 填写 `dist`。
-5. 设置 `VITE_API_BASE_URL=https://你的后端服务.onrender.com`。
-6. 设置 `VITE_PUBLIC_READ_ONLY=true`。
-7. 添加 Rewrite：Source `/*`，Destination `/index.html`，Action `Rewrite`。
-8. 部署后把前端完整 Origin 写入后端 `CORS_ORIGINS`，例如
-   `https://your-frontend.onrender.com`；同时把不含协议的主机名写入
-   `FRONTEND_HOST`，例如 `your-frontend.onrender.com`，然后重新部署后端。
-
-### 可选环境变量
-
-- 高德地图：在 Static Site 设置 `VITE_AMAP_KEY` 和
-  `VITE_AMAP_SECURITY_CODE`，然后执行 **Clear build cache & deploy**。
-- 外部大模型：在 Web Service 设置 `LLM_PROVIDER`、`LLM_API_KEY`、
-  `LLM_BASE_URL` 和 `LLM_MODEL`。未配置时继续使用本地检索问答。
-- 自定义域名：在前端服务 **Settings → Custom Domains** 添加域名；随后将完整
-  HTTPS Origin 加入后端 `CORS_ORIGINS`，多个地址用英文逗号分隔。
-
-### SQLite 部署策略
-
-Render 默认文件系统是临时的。当前 Blueprint 将仓库中的公开 SQLite 数据库复制
-到 `/tmp/maogongshan.db`，用于浏览、检索和问答，并启用只读公开模式。运行期访问
-计数、问答记录、后台修改和上传不会作为永久数据保存，后台写操作会返回明确的
-`403`，不会让用户误以为修改已持久化。
-
-需要长期后台编辑时，应使用 Render Persistent Disk 或迁移 PostgreSQL，再把
-`READ_ONLY_MODE` 改为 `false` 并设置强随机管理员凭据。不要直接在免费实例的普通
-文件系统中保存上传文件。
-
-### 重新部署、日志与域名
-
-- 推送到 `main` 后，两个服务按 `autoDeployTrigger: commit` 自动重新部署。
-- 手动部署：服务页面选择 **Manual Deploy → Deploy latest commit**。
-- 构建失败：查看服务页面 **Logs**，优先检查 Node/Python 版本、环境变量和命令。
-- 前端接口失败：先打开后端 `/api/health`，再检查 `VITE_API_BASE_URL` 是否为完整
-  HTTPS 地址，以及后端 `CORS_ORIGINS` 是否包含当前前端完整 Origin。
-- 自定义域名在服务 **Settings → Custom Domains** 中配置；DNS 验证完成后 Render
-  自动签发 HTTPS 证书。
-
-### 上线前核对
-
-在仓库根目录执行：
-
-```powershell
-cd frontend
-npm ci
-npm run check
-npm run build
-npm run check:deploy
-```
-
-上传 GitHub 前再确认：
-
-- `git status --ignored` 中 `.env`、`node_modules`、`.venv`、`dist` 和日志均为忽略项；
-- 仓库中只有 `.env.example`，没有真实 Key、Token 或密码；
-- 不提交根目录生成的 ZIP、原始个人材料和数据库备份；
-- Render Blueprint 创建成功后，以控制台给出的实际公网域名复核三处地址变量；
-- 修改任何 `VITE_` 变量后重新构建前端，因为 Vite 会在构建时写入这些值。
-
-## 常见问题
-
-### 8000 或 5173 端口被占用
-
-先运行 `stop.bat`。若不是本项目占用，请关闭相应程序后重新启动；脚本不会自动结束未知进程。
-
-### 后端无法访问
-
-检查后端窗口中的报错，并访问 `http://127.0.0.1:8000/api/health`。确认 Python 版本不低于 3.10。
-
-### 前端显示接口失败
-
-确认前后端同时启动。开发环境应让 `VITE_API_BASE_URL` 保持为空，以使用 Vite 代理。
-
-### 依赖损坏
-
-删除可再生成的 `frontend/node_modules` 和 `backend/.venv`，再次运行 `start.bat`。
-
-### 地图提示未配置 Key
-
-这是正常降级状态。申请高德 Web JS API Key 后填写 `frontend/.env`，不要把真实 Key 提交到 Git。
-
-### 深层页面刷新
-
-开发服务器支持 Vue Router 回退。`render.yaml` 已把未知路径重写到 `index.html`，
-直接打开或刷新二级、三级详情页不会返回平台级 404。
+详细步骤参见 [Render 部署报告](docs/RENDER_DEPLOYMENT_REPORT.md)。
 
 ## 当前限制
 
-- 高德在线地图需要使用者自己的 Web JS API Key 和安全密钥。
-- 外部大模型需要使用者自己的合法 API 配置；未配置时使用本地检索问答。
-- 受版权限制的视频不随仓库分发，相关页面使用来源明确的图文微课和媒体降级。
-- Render 公网版本使用 SQLite 临时副本和只读后台；浏览、搜索、问答不受影响，
-  但后台持久编辑与上传需要 Persistent Disk 或后续迁移 PostgreSQL。
+- 在线高德地图需要使用者自行申请 Web JS API Key 与安全密钥；未配置时使用静态导览。
+- 外部大模型属于可选增强项；未配置时使用 SQLite 本地检索问答。
+- 受版权限制的视频不随仓库分发，相关页面使用来源明确的图文内容和媒体降级。
+- Render 免费文件系统不适合持久写入，公开实例默认使用临时 SQLite 副本和只读后台。
+- 平台内容用于教育与研究展示，历史结论仍应以权威档案、地方志和正式出版物为准。
 
-## 后续规划
+## 未来优化方向
 
-- 完善毛公山实地调研资料的持续采集、审核、来源标注与授权管理。
-- 扩充红色人物、历史事件、研学路线、音视频讲解和无障碍内容。
-- 建立自动化测试与持续集成流程，覆盖接口、资源完整性和多端页面回归。
-- 在具备持久化存储条件后，将生产数据迁移至 PostgreSQL 或带持久磁盘的 SQLite。
-- 完善贡献指南、Issue 模板和版本发布记录，逐步形成可协作维护的开源社区。
+1. **数据治理**：建立资料版本、审核人、核验日期和引用关系，形成更完整的数据谱系。
+2. **检索能力**：引入全文索引、语义检索和可解释的多来源排序，提升查询质量。
+3. **空间叙事**：完善地图点位、调研轨迹和研学路线，探索时空关联可视化。
+4. **多媒体传播**：扩充经过授权的音频、视频、口述史和无障碍讲解内容。
+5. **用户研究**：开展可用性测试和传播效果评估，形成定量与定性研究数据。
+6. **工程质量**：增加 CI、API 自动化测试、依赖安全扫描和可重复发布流程。
+7. **数据持久化**：在需要协作编辑时迁移至 PostgreSQL，并建设权限、审计和备份机制。
+8. **开放协作**：完善 Issue、Pull Request、数据纠错和学术引用流程。
+
+## 贡献与引用
+
+欢迎通过 Issue 提交资料纠错、来源补充、界面问题和改进建议。参与开发前请阅读 [贡献指南](CONTRIBUTING.md)，安全或隐私问题请按照 [安全说明](SECURITY.md) 私下报告。
+
+在课程报告、社会实践成果或研究材料中引用本项目时，建议注明：
+
+> 山东大学软件学院毛公山红色文化调研项目：《毛公山红色文化数字资源平台》，2026。
 
 ## 许可证
 
-代码采用 [MIT License](LICENSE)。图片、历史资料和第三方内容仍遵循各自来源页面标注的版权与使用条件。
-
-参与开发前请阅读 [贡献指南](CONTRIBUTING.md)；安全或隐私问题请按 [安全说明](SECURITY.md) 报告。
+项目代码采用 [MIT License](LICENSE)。图片、历史资料、文字来源和其他第三方内容遵循各自来源页面标注的版权与使用条件。

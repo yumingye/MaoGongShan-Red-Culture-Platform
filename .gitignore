@@ -1,0 +1,84 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.development
+!.env.production.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+!frontend/.env.development
+!frontend/.env.production.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+frontend/.npm-cache/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+frontend/public/assets/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python / backend
+venv/
+.venv/
+backend/venv/
+backend/.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Logs and runtime files
+*.log
+backend/*.log
+frontend/*.log
+*.pid
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Generated artifacts
+dist/
+build/
+coverage/
+.cache/
+*.zip
+maogongshan-github-ready/
+maogongshan-red-culture-platform/
+maogongshan-red-culture-platform.zip
+docs/screenshots/edge-*/
+.runtime/
+
+# IDE and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Private source documents and local-only folders
+backend/private/
+docs/private/
+个人+山软寻脉·毛公山数字调研实践团+普通立项/
+山软寻脉·毛公山数字调研实践团+于茗烨.docx
+/毛公山照片/
+*.docx
+*.doc
+/*.pdf
+
+# Local database backups
+*.backup.db
+*.bak.db
+database/backups/

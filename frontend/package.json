@@ -1,0 +1,37 @@
+{
+  "name": "maogongshan-red-culture-resource-library",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "node scripts/sync-assets.mjs",
+    "sync:assets": "node scripts/sync-assets.mjs",
+    "predev": "npm run sync:assets",
+    "dev": "vite --host 127.0.0.1",
+    "prebuild": "npm run sync:assets",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "prelint": "npm run sync:assets",
+    "lint": "node scripts/quality-check.mjs --static-only",
+    "pretest": "npm run sync:assets",
+    "test": "node scripts/quality-check.mjs && node scripts/check-gallery-images.mjs && node scripts/check-party-media.mjs && node scripts/check-photo-library.mjs",
+    "precheck": "npm run sync:assets",
+    "check": "node scripts/quality-check.mjs && node scripts/check-gallery-images.mjs && node scripts/check-party-media.mjs && node scripts/check-photo-library.mjs",
+    "check:browser": "node scripts/browser-layout-check.mjs",
+    "check:gallery": "node scripts/check-gallery-images.mjs",
+    "check:party-media": "node scripts/check-party-media.mjs",
+    "check:photos": "node scripts/check-photo-library.mjs",
+    "check:deploy": "node scripts/check-deployment.mjs"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
+    "axios": "^1.7.9",
+    "element-plus": "^2.9.1",
+    "vue": "^3.5.40",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.8",
+    "vite": "^8.1.5"
+  }
+}

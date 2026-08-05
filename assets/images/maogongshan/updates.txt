@@ -1,0 +1,3 @@
+19|/assets/images/maogongshan/resource-19.jpg
+28|/assets/images/maogongshan/resource-28.jpg
+60|/assets/images/maogongshan/resource-60.jpg

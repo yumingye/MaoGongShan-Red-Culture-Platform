@@ -69,6 +69,7 @@ def llm_status() -> dict[str, Any]:
         "provider": LLM_PROVIDER or "local-retrieval",
         "model": LLM_MODEL if configured else "",
         "mode": "rag_llm" if configured else "local_retrieval",
+        "transport": "urllib-safe-redirect-v1",
     }
 
 

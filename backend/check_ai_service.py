@@ -52,6 +52,7 @@ def main() -> int:
         "LLM_MODEL": "test-model",
     }
     with patch.multiple(ai_service, **configured):
+        assert ai_service.llm_status()["transport"] == "urllib-safe-redirect-v1"
         assert ai_service._endpoint() == "https://example.invalid/v1/chat/completions"
         assert ai_service.generate_rag_answer("未知问题", []) == "当前资源库暂未收录足够资料。"
         with patch.object(ai_service._HTTP_OPENER, "open", return_value=FakeResponse({"choices": [{"message": {"content": "仅依据资料库回答。"}}]})) as mocked:

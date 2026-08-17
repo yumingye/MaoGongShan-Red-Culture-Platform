@@ -20,8 +20,45 @@ services:
       - key: READ_ONLY_MODE
         value: "true"
       - key: CORS_ORIGINS
-        sync: false
+        value: https://maogongshan-red-culture-web-yumingye.onrender.com
+      - key: FRONTEND_HOST
+        value: maogongshan-red-culture-web-yumingye.onrender.com
       - key: ADMIN_PASSWORD
         generateValue: true
       - key: ADMIN_TOKEN
         generateValue: true
+
+  - type: web
+    name: maogongshan-red-culture-web-yumingye
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: 22.16.0
+      - key: VITE_API_BASE_URL
+        value: https://maogongshan-red-culture-api-yumingye.onrender.com
+      - key: VITE_PUBLIC_READ_ONLY
+        value: "true"
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=()
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable

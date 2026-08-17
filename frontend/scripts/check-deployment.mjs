@@ -22,8 +22,8 @@ function walkFiles(directory) {
 }
 
 requireFile(path.join(projectRoot, 'render.yaml'), 'Render Blueprint')
-requireFile(path.join(projectRoot, 'netlify.toml'), 'Netlify 配置')
-requireFile(path.join(frontendRoot, 'public', '_redirects'), 'Netlify SPA 路由规则')
+requireFile(path.join(projectRoot, 'netlify.toml'), 'Netlify 备用配置')
+requireFile(path.join(frontendRoot, 'public', '_redirects'), 'Netlify 备用 SPA 路由规则')
 requireFile(path.join(projectRoot, '.env.example'), '根环境变量示例')
 requireFile(path.join(projectRoot, 'backend', '.env.example'), '后端环境变量示例')
 requireFile(path.join(frontendRoot, '.env.example'), '前端环境变量示例')
@@ -40,18 +40,24 @@ if (fs.existsSync(blueprintPath)) {
   const blueprint = fs.readFileSync(blueprintPath, 'utf8')
   for (const required of [
     'runtime: python',
+    'runtime: static',
+    'name: maogongshan-red-culture-api-yumingye',
+    'name: maogongshan-red-culture-web-yumingye',
     'healthCheckPath: /api/health',
     'uvicorn backend.app:app --host 0.0.0.0 --port $PORT',
+    'buildCommand: npm ci && npm run build',
+    'staticPublishPath: ./dist',
+    'VITE_API_BASE_URL',
+    'https://maogongshan-red-culture-api-yumingye.onrender.com',
+    'https://maogongshan-red-culture-web-yumingye.onrender.com',
     'ENVIRONMENT',
     'production',
     'CORS_ORIGINS',
-    'sync: false'
+    'destination: /index.html'
   ]) {
     if (!blueprint.includes(required)) failures.push(`render.yaml 缺少：${required}`)
   }
-  if (/property:\s*host/.test(blueprint)) {
-    failures.push('render.yaml 不应把 Render 私有网络 host 注入浏览器端')
-  }
+  if (/property:\s*host/.test(blueprint)) failures.push('render.yaml 不应把 Render 私有网络 host 注入浏览器端')
   if (/value:\s*https?:\/\/(?:localhost|127\.0\.0\.1)/i.test(blueprint)) {
     failures.push('render.yaml 的生产环境变量包含 localhost 地址')
   }
@@ -124,5 +130,5 @@ if (failures.length) {
 }
 
 console.log(
-  `部署检查通过：${buildFiles.length} 个构建文本资源，Netlify、Render、SPA Rewrite、环境变量和本地路径均正常。`
+  `部署检查通过：${buildFiles.length} 个构建文本资源，Render 前后端、SPA Rewrite、环境变量和本地路径均正常；Netlify 备用配置有效。`
 )

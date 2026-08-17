@@ -243,6 +243,8 @@ Copy-Item frontend\.env.example frontend\.env
 启动后端后，在 `frontend` 目录执行：
 
 ```powershell
+..\backend\.venv\Scripts\python.exe ..\backend\check_api_contract.py
+..\backend\.venv\Scripts\python.exe ..\backend\check_upload_validation.py
 npm run lint
 npm run test
 $env:VITE_API_BASE_URL="https://your-api.example.com"
@@ -255,6 +257,15 @@ npm run check:deploy
 浏览器布局巡检：
 
 ```powershell
+npm run check:browser
+```
+
+浏览器检查支持按场景拆分，适合在资源受限的 CI 或 Windows 环境中定位问题：
+
+```powershell
+$env:BROWSER_QUICK="1"                 # 核心页面快速巡检
+$env:BROWSER_ONLY_INTERACTIONS="1"     # 时间轴、轮播、灯箱、闯关等交互专测
+$env:BROWSER_ONLY_RESILIENCE="1"       # 断网、慢网、坏图与 API 阻断专测
 npm run check:browser
 ```
 
@@ -285,13 +296,13 @@ npm run check:browser
 
 ## 部署
 
-推荐生产架构为：
+生产环境统一部署到 Render，仓库根目录的 `render.yaml` 会复用同名服务并配置：
 
-- 前端：Netlify，使用仓库根目录的 `netlify.toml`。
-- 后端：Render，使用仓库根目录的 `render.yaml`。
+- 前端 Static Site：`https://maogongshan-red-culture-web-yumingye.onrender.com`
+- 后端 FastAPI：`https://maogongshan-red-culture-api-yumingye.onrender.com`
 - 数据库：公开只读实例启动时将仓库中的种子 SQLite 复制到托管平台临时目录。
 
-生产构建必须在 Netlify 设置 HTTPS `VITE_API_BASE_URL`，后端必须把最终 Netlify Origin 写入 `CORS_ORIGINS`。代码已经提供 `netlify.toml`、`frontend/public/_redirects` 和 `render.yaml`。
+Blueprint 已写入前端 HTTPS API 地址、后端精确 CORS 来源、SPA Rewrite、`0.0.0.0:$PORT` 和安全响应头。开发环境仍通过 Vite 代理访问本地后端；生产构建会拒绝 `localhost` 或 `127.0.0.1` API 地址。`netlify.toml` 仅作为备用部署配置保留。
 
 完整上线顺序、环境变量、验证命令和故障排查参见 [生产部署指南](docs/DEPLOYMENT.md)。
 
@@ -310,7 +321,7 @@ npm run check:browser
 3. **空间叙事**：完善地图点位、调研轨迹和研学路线，探索时空关联可视化。
 4. **多媒体传播**：扩充经过授权的音频、视频、口述史和无障碍讲解内容。
 5. **用户研究**：开展可用性测试和传播效果评估，形成定量与定性研究数据。
-6. **工程质量**：增加 CI、API 自动化测试、依赖安全扫描和可重复发布流程。
+6. **工程质量**：将现有 API 契约检查接入 CI，并增加依赖安全扫描和可重复发布流程。
 7. **数据持久化**：在需要协作编辑时迁移至 PostgreSQL，并建设权限、审计和备份机制。
 8. **开放协作**：完善 Issue、Pull Request、数据纠错和学术引用流程。
 

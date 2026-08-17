@@ -41,11 +41,25 @@ import { http } from '../api/http'
 import PageHero from '../components/PageHero.vue'
 import SectionTitle from '../components/SectionTitle.vue'
 import SafeImage from '../components/SafeImage.vue'
+import places from '../data/places.json'
 
-const spots = ref([])
+const fallbackSpots = places.slice(0, 8).map((item) => ({
+  id: item.id,
+  name: item.title,
+  type: item.category,
+  description: item.summary,
+  route_hint: item.location,
+  image_url: item.image
+}))
+const spots = ref(fallbackSpots)
 
 onMounted(async () => {
-  try { spots.value = (await http.get('/api/scenic-spots')).data } catch { spots.value = [] }
+  try {
+    const rows = (await http.get('/api/scenic-spots')).data
+    if (Array.isArray(rows) && rows.length) spots.value = rows
+  } catch {
+    spots.value = fallbackSpots
+  }
 })
 </script>
 

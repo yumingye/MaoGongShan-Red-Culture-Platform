@@ -12,8 +12,10 @@
         size="large"
         placeholder="搜索毛公山、红色文化、山软青年、实践日志、地图点位等内容"
         clearable
+        maxlength="100"
+        show-word-limit
         @keyup.enter="load"
-        @input="loadSuggestions"
+        @input="scheduleSuggestions"
       >
         <template #append>
           <el-button type="primary" :loading="loading" @click="load">搜索</el-button>
@@ -54,7 +56,7 @@
       <el-button plain @click="quickSearch('山东大学软件学院')">查看山软青年专题</el-button>
     </el-empty>
 
-    <el-tabs v-else v-model="activeType" class="result-tabs">
+    <el-tabs v-else v-loading="loading" v-model="activeType" class="result-tabs">
       <el-tab-pane v-for="group in groups" :key="group.key" :label="`${group.label} ${group.items.length}`" :name="group.key">
         <TransitionGroup name="fade-list" tag="div" class="result-list">
           <RouterLink
@@ -69,8 +71,8 @@
                 <span class="type-pill">{{ group.label }}</span>
                 <span>{{ item.meta }}</span>
               </div>
-              <h3 v-html="highlight(item.title)"></h3>
-              <p v-html="highlight(item.summary)"></p>
+              <h3><span v-for="(part, index) in highlightParts(item.title)" :key="index" :class="{ highlight: part.matched }">{{ part.text }}</span></h3>
+              <p><span v-for="(part, index) in highlightParts(item.summary)" :key="index" :class="{ highlight: part.matched }">{{ part.text }}</span></p>
             </div>
           </RouterLink>
         </TransitionGroup>
@@ -81,7 +83,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { http } from '../api/http'
 import PageHero from '../components/PageHero.vue'
@@ -99,8 +101,13 @@ const loading = ref(false)
 const error = ref('')
 const suggestions = ref([])
 const historyWords = ref([])
-const data = reactive({ events: [], figures: [], resources: [], images: [], spots: [], learning: [] })
-const hotWords = ['毛公山在哪里', '红色故事', '山东大学软件学院', '实践调研', '登山路线', '图片来源']
+const data = reactive({
+  events: [], figures: [], resources: [], images: [], spots: [], learning: [],
+  stories: [], places: [], achievements: [], research: []
+})
+const hotWords = ['毛公山在哪里', '沂蒙精神', '青岛红色文化', '红色人物', '实践成果', '登山路线']
+let suggestionTimer
+let suggestionRequest = 0
 
 const groups = computed(() => [
   { key: 'events', label: '历史事件', items: data.events.map((item) => normalize(item, 'title', 'summary', 'event_time', item.image_url)) },
@@ -109,6 +116,10 @@ const groups = computed(() => [
   { key: 'images', label: '图片资料', items: data.images.map((item) => normalize(item, 'name', 'description', 'category', item.image_url || item.local_path)) },
   { key: 'spots', label: '景点点位', items: data.spots.map((item) => normalize(item, 'name', 'description', 'type', item.image_url)) },
   { key: 'learning', label: '党史学习', items: data.learning.map((item) => normalize(item, 'title', 'summary', 'event_time', item.image)) },
+  { key: 'stories', label: '红色故事', items: data.stories.map((item) => normalize(item, 'title', 'summary', 'category', item.image)) },
+  { key: 'places', label: '红色地点', items: data.places.map((item) => normalize(item, 'title', 'summary', 'location', item.image)) },
+  { key: 'achievements', label: '实践成果', items: data.achievements.map((item) => normalize(item, 'title', 'summary', 'category', item.image)) },
+  { key: 'research', label: '调研日志', items: data.research.map((item) => normalize(item, 'title', 'summary', 'date', item.image)) },
   { key: 'exhibitions', label: '数字展览', items: filterLocal(exhibitions).map((item) => normalize(item, 'title', 'summary', 'category', item.image)) },
   { key: 'videos', label: '图文微课', items: filterLocal(videoLessons).map((item) => normalize(item, 'title', 'summary', 'category', item.cover)) }
 ])
@@ -131,11 +142,16 @@ function filterLocal(items) {
   return items.filter((item) => `${item.title} ${item.summary} ${item.category} ${(item.keywords || []).join(' ')}`.toLowerCase().includes(term))
 }
 
-function highlight(text = '') {
+function highlightParts(text = '') {
   const value = String(text)
-  if (!q.value) return value
-  const keyword = q.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return value.replace(new RegExp(keyword, 'gi'), (match) => `<span class="highlight">${match}</span>`)
+  const keyword = q.value.trim()
+  if (!keyword) return [{ text: value, matched: false }]
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const matcher = new RegExp(`(${escaped})`, 'gi')
+  return value.split(matcher).filter(Boolean).map((part) => ({
+    text: part,
+    matched: part.toLowerCase() === keyword.toLowerCase()
+  }))
 }
 
 function resolveLink(type, item) {
@@ -144,6 +160,10 @@ function resolveLink(type, item) {
   if (type === 'resources') return `/resources/${item.id}`
   if (type === 'images') return `/images/${item.id}`
   if (type === 'learning') return `/learning/${item.id}`
+  if (type === 'stories') return `/stories/${item.id}`
+  if (type === 'places') return `/places/${item.id}`
+  if (type === 'achievements') return `/achievements/${item.id}`
+  if (type === 'research') return `/research/${item.id}`
   if (type === 'exhibitions') return `/exhibitions/${item.slug}`
   if (type === 'videos') return `/videos/${item.slug}`
   return '/map'
@@ -173,16 +193,22 @@ function quickSearch(word) {
 }
 
 async function loadSuggestions() {
+  const requestId = ++suggestionRequest
   if (!q.value.trim()) {
     suggestions.value = []
     return
   }
   try {
     const res = await http.get('/api/search/suggestions', { params: { q: q.value } })
-    suggestions.value = (res.data.items || res.data || []).slice(0, 8)
+    if (requestId === suggestionRequest) suggestions.value = (res.data.items || res.data || []).slice(0, 8)
   } catch {
-    suggestions.value = []
+    if (requestId === suggestionRequest) suggestions.value = []
   }
+}
+
+function scheduleSuggestions() {
+  window.clearTimeout(suggestionTimer)
+  suggestionTimer = window.setTimeout(loadSuggestions, 260)
 }
 
 async function load() {
@@ -215,6 +241,8 @@ onMounted(() => {
   readHistory()
   load()
 })
+
+onBeforeUnmount(() => window.clearTimeout(suggestionTimer))
 </script>
 
 <style scoped>

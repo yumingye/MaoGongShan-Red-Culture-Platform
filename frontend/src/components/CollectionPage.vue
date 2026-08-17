@@ -11,7 +11,7 @@
       <el-alert v-if="error" :title="error" type="error" show-icon class="error-alert" />
       <div v-loading="loading" class="grid grid-3">
         <article v-for="item in list" :key="item.id" class="collection-card reveal" @click="$router.push(`${detailPrefix}/${item.id}`)">
-          <SafeImage :src="item.image" :alt="item.title" />
+          <SafeImage :src="item.image" :alt="item.title" :kind="imageKind(item)" />
           <div>
             <span>{{ item.date || item.location || item.category }}</span>
             <h3>{{ item.title }}</h3>
@@ -29,7 +29,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
-import { http } from '../api/http'
+import { http, inferImageKind } from '../api/http'
 import PageHero from './PageHero.vue'
 import SafeImage from './SafeImage.vue'
 import SectionTitle from './SectionTitle.vue'
@@ -50,6 +50,10 @@ const page = ref(1)
 const pageSize = 12
 const loading = ref(false)
 const error = ref('')
+
+function imageKind(item) {
+  return inferImageKind(props.itemType, props.title, item?.category, item?.title, item?.image)
+}
 
 async function load(nextPage = page.value) {
   page.value = nextPage
@@ -119,6 +123,31 @@ onMounted(() => load(1))
 .collection-card p {
   color: var(--muted);
   line-height: 1.75;
+}
+
+@media (min-width: 1000px) {
+  .collection-card:first-child {
+    grid-column: span 2;
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr);
+    min-height: 330px;
+  }
+
+  .collection-card:first-child :deep(.safe-image) {
+    height: 100%;
+    min-height: 330px;
+  }
+
+  .collection-card:first-child > div {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(24px, 4vw, 42px);
+  }
+
+  .collection-card:first-child h3 {
+    font-size: clamp(24px, 3vw, 34px);
+  }
 }
 
 .pager {

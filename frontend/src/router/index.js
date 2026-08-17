@@ -163,6 +163,55 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 })
 })
 
+const pageTitles = [
+  [/^\/$/, '首页'],
+  [/^\/overview/, '走进毛公山'],
+  [/^\/(party-history|red-events|spirits|red-culture|timeline|history)/, '红色文化与党史学习'],
+  [/^\/(figures|heroes)/, '红色人物档案'],
+  [/^\/(exhibitions|shandong-red|qingdao-red|youth-mission|conferences|red-books|red-relics|photo-compare|study-routes)/, '数字展馆'],
+  [/^\/(scenery|gallery|images|photos)/, '毛公山全景图库'],
+  [/^\/map/, '毛公山数字导览'],
+  [/^\/(research|plan|results|team|achievements|project)/, '山大社会实践'],
+  [/^\/(resources|audio|videos)/, '数字资源库'],
+  [/^\/(stories|places|red-scenic)/, '红色故事与红色地标'],
+  [/^\/chat/, 'AI 红色文化助手'],
+  [/^\/search/, '全站搜索'],
+  [/^\/learning-challenge/, '红色文化互动学习'],
+  [/^\/guide/, '毛公山参观指南'],
+  [/^\/news/, '实践动态'],
+  [/^\/sandtable/, '毛公山数字沙盘'],
+  [/^\/favorites/, '个人收藏与足迹'],
+  [/^\/admin/, '内容管理'],
+  [/^\/school/, '山东大学软件学院'],
+  [/^\/sources/, '资料来源与版权'],
+  [/^\/about/, '关于平台'],
+  [/^\/help/, '使用帮助']
+]
+
+function updateDocumentMetadata(to) {
+  const section = pageTitles.find(([pattern]) => pattern.test(to.path))?.[1] || '页面未找到'
+  document.title = `${section}｜毛公山红色数字文化平台`
+  const ogTitle = document.querySelector('meta[property="og:title"]')
+  if (ogTitle) ogTitle.setAttribute('content', document.title)
+}
+
+const routeThemes = [
+  [/^\/$/, 'home'],
+  [/^\/(scenery|gallery|images|photos|overview)/, 'forest'],
+  [/^\/(party-history|red-events|spirits|red-culture|timeline|history|figures|heroes|stories|places|red-scenic|learning)/, 'history'],
+  [/^\/(exhibitions|shandong-red|qingdao-red|youth-mission|conferences|red-books|red-relics|photo-compare|study-routes|videos)/, 'exhibition'],
+  [/^\/(research|plan|team|project)/, 'research'],
+  [/^\/school/, 'school'],
+  [/^\/chat/, 'ai'],
+  [/^\/(map|guide|sandtable)/, 'route'],
+  [/^\/(results|achievements|news)/, 'results'],
+  [/^\/(resources|audio|sources|favorites|search)/, 'archive']
+]
+
+function updateRouteTheme(to) {
+  document.documentElement.dataset.theme = routeThemes.find(([pattern]) => pattern.test(to.path))?.[1] || 'paper'
+}
+
 // Vite 代码分包在浏览器缓存过旧时可能加载失败，仅自动刷新一次避免循环。
 router.onError((error) => {
   const isChunkError = /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk/i.test(error?.message || '')
@@ -183,7 +232,9 @@ router.onError((error) => {
   window.location.reload()
 })
 
-router.afterEach(() => {
+router.afterEach((to) => {
+  updateDocumentMetadata(to)
+  updateRouteTheme(to)
   try { sessionStorage.removeItem('mgs-chunk-reload') } catch { window.__mgsChunkReloaded = false }
 })
 

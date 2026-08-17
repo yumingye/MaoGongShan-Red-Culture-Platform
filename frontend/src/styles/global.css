@@ -10,7 +10,24 @@
   --muted: #70685f;
   --line: #eadcc2;
   --shadow: 0 18px 45px rgba(84, 16, 21, .12);
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 26px;
+  --content-width: 1200px;
+  --theme-accent: #8f1d22;
+  --theme-tint: rgba(143, 29, 34, .08);
+  --theme-image: url('/assets/images/banners/summit-terrace-panorama-hero.webp');
 }
+
+html[data-theme="forest"] { --theme-accent:#315f4b;--theme-tint:rgba(49,95,75,.11);--theme-image:url('/assets/images/banners/mountain-view-west-hero.webp'); }
+html[data-theme="history"] { --theme-accent:#8f1d22;--theme-tint:rgba(143,29,34,.10);--theme-image:url('/assets/images/party-history/info-overview-party-history.jpg'); }
+html[data-theme="exhibition"] { --theme-accent:#9b2429;--theme-tint:rgba(201,162,75,.12);--theme-image:url('/assets/images/red-culture/exhibition-calligraphy-detail.webp'); }
+html[data-theme="research"] { --theme-accent:#365b73;--theme-tint:rgba(54,91,115,.10);--theme-image:url('/assets/images/research/research-history-gallery-a-detail.webp'); }
+html[data-theme="school"] { --theme-accent:#2d5573;--theme-tint:rgba(45,85,115,.10);--theme-image:url('/assets/images/commons/20240730-qingdao-campus-of-shandong-university-01-jpg.jpg'); }
+html[data-theme="ai"] { --theme-accent:#70423c;--theme-tint:rgba(112,66,60,.11);--theme-image:url('/assets/images/banners/mountain-view-west-hero.webp'); }
+html[data-theme="route"] { --theme-accent:#33634e;--theme-tint:rgba(51,99,78,.11);--theme-image:url('/assets/images/banners/mountain-road-hero.webp'); }
+html[data-theme="results"] { --theme-accent:#9b692f;--theme-tint:rgba(155,105,47,.11);--theme-image:url('/assets/images/research/research-history-gallery-a-detail.webp'); }
+html[data-theme="archive"] { --theme-accent:#755540;--theme-tint:rgba(117,85,64,.10);--theme-image:url('/assets/images/people/figure-profile-display-a-detail.webp'); }
 
 * {
   box-sizing: border-box;
@@ -68,6 +85,22 @@ img {
   flex: 1;
   width: 100%;
   min-width: 0;
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, rgba(255,250,240,.93), rgba(251,246,234,.98) 520px),
+    var(--theme-image) center top/100% auto no-repeat;
+}
+
+.app-main::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8% 28%, var(--theme-tint), transparent 24%),
+    radial-gradient(circle at 94% 72%, var(--theme-tint), transparent 22%);
+  content: "";
 }
 
 .site-header {
@@ -170,25 +203,27 @@ img {
 }
 
 .page {
-  width: min(1200px, calc(100% - 48px));
+  width: min(var(--content-width), calc(100% - 48px));
   margin: 0 auto;
   padding: 42px 0 64px;
 }
 
 .page-hero {
-  min-height: 360px;
+  min-height: clamp(260px, 34vw, 350px);
   display: grid;
   align-items: center;
   color: #fff8e6;
   background-position: center;
   background-size: cover;
   overflow: hidden;
+  border-bottom: 1px solid rgba(201, 162, 75, .42);
+  box-shadow: inset 0 -50px 70px rgba(49, 8, 11, .14);
 }
 
 .page-hero-content {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 70px 0;
+  padding: clamp(52px, 7vw, 76px) 0;
 }
 
 .page-hero h1 {
@@ -258,7 +293,7 @@ img {
 }
 
 .grid-3 {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
 }
 
 .grid-4 {
@@ -272,7 +307,7 @@ img {
 .panel {
   background: rgba(255, 250, 240, .88);
   border: 1px solid rgba(234, 220, 194, .95);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow);
 }
 
@@ -292,7 +327,7 @@ img {
   margin-bottom: 24px;
   background: rgba(255, 250, 240, .92);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   box-shadow: 0 14px 30px rgba(84, 16, 21, .08);
 }
 
@@ -321,6 +356,22 @@ img {
   border-radius: 12px;
   box-shadow: 0 16px 34px rgba(84, 16, 21, .09);
   transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+
+.page > section + section,
+.page > .grid + section,
+.page > section + .grid {
+  margin-top: clamp(34px, 5vw, 64px);
+}
+
+.page > .panel,
+.page > section.panel {
+  backdrop-filter: blur(10px);
+}
+
+html[data-theme] .section-heading h2,
+html[data-theme] .section-title {
+  color: color-mix(in srgb, var(--theme-accent) 78%, #31080b);
 }
 
 .stat-card:hover,
@@ -590,6 +641,18 @@ img {
   .grid-6,
   .site-footer {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1081px) {
+  .grid-3 > :only-child {
+    grid-column: 1 / -1;
+  }
+
+  .grid-4 > :only-child,
+  .grid-4 > :nth-last-child(2):first-child,
+  .grid-4 > :nth-last-child(2):first-child + * {
+    grid-column: span 2;
   }
 }
 

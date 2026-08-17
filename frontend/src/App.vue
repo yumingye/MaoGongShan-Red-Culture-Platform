@@ -1,8 +1,9 @@
 <template>
   <div class="app-layout">
+    <a class="skip-link" href="#main-content">跳至主要内容</a>
     <div class="scroll-progress" :style="{ transform: `scaleX(${scrollProgress})` }" aria-hidden="true"></div>
     <SiteHeader />
-    <main class="app-main">
+    <div id="main-content" class="app-main" tabindex="-1">
       <el-alert
         v-if="runtimeError"
         class="runtime-alert"
@@ -34,7 +35,7 @@
           </div>
         </section>
       </RouterView>
-    </main>
+    </div>
     <SiteFooter />
     <el-backtop :right="24" :bottom="24" />
   </div>
@@ -92,6 +93,19 @@ onBeforeUnmount(() => {
 </script>
 
 <style>
+.skip-link {
+  position: fixed;
+  z-index: 120;
+  top: 8px;
+  left: 12px;
+  padding: 10px 14px;
+  color: #fff;
+  background: #7f1d1d;
+  border-radius: 6px;
+  transform: translateY(-160%);
+  transition: transform .16s ease;
+}
+.skip-link:focus { transform: translateY(0); }
 .scroll-progress {
   position: fixed;
   z-index: 100;

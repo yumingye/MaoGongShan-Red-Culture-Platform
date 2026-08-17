@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="毛公山红色数字文化平台">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#a61d24"/>
+      <stop offset="1" stop-color="#5e1117"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill="url(#bg)" stroke="#d8b56b" stroke-width="2"/>
+  <path d="M11 43 24 25l7 9 8-13 14 22H11Z" fill="#f5e7bd" opacity=".96"/>
+  <path d="M20 44h25" stroke="#d8b56b" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="20" cy="18" r="4" fill="#f5cf63"/>
+</svg>

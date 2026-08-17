@@ -22,7 +22,7 @@
 
       <article v-if="item" class="detail-layout">
         <section class="panel detail-main">
-          <SafeImage :src="item.image" :alt="item.title" loading="eager" />
+          <SafeImage :src="item.image" :alt="item.title" :kind="imageKind(item)" loading="eager" />
           <h1>{{ item.title }}</h1>
           <div class="meta-line">
             <el-tag v-if="item.category" type="danger">{{ item.category }}</el-tag>
@@ -57,8 +57,8 @@
         <aside class="panel side">
           <h3>相关推荐</h3>
           <RouterLink v-for="related in relatedItems" :key="related.id" :to="`${detailPrefix}/${related.id}`">
-            <span>{{ related.date || related.location || related.category }}</span>
-            <strong>{{ related.title }}</strong>
+            <SafeImage :src="related.image" :alt="related.title" :kind="imageKind(related)" />
+            <span><small>{{ related.date || related.location || related.category }}</small><strong>{{ related.title }}</strong></span>
           </RouterLink>
           <el-empty v-if="!relatedItems.length" description="可从列表继续浏览同类资料" />
         </aside>
@@ -71,7 +71,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { http, assetUrl } from '../api/http'
+import { http, assetUrl, inferImageKind } from '../api/http'
 import PageHero from './PageHero.vue'
 import SafeImage from './SafeImage.vue'
 import { addRecentView, isFavorite, toggleFavorite } from '../utils/library'
@@ -91,6 +91,10 @@ const list = ref([])
 const loading = ref(false)
 const error = ref('')
 const version = ref(0)
+
+function imageKind(entry) {
+  return inferImageKind(props.itemType, entry?.category, entry?.title, entry?.image)
+}
 
 const favoriteKey = computed(() => item.value ? `${props.favoriteType}:${item.value.id}` : '')
 const favoriteLabel = computed(() => {
@@ -232,10 +236,27 @@ onMounted(loadDetail)
 
 .side a {
   display: grid;
-  gap: 4px;
+  grid-template-columns: 82px 1fr;
+  gap: 12px;
+  align-items: center;
   padding: 12px 0;
   text-decoration: none;
   border-bottom: 1px solid var(--line);
+}
+
+.side a :deep(.safe-image) {
+  width: 82px;
+  height: 64px;
+  border-radius: 8px;
+}
+
+.side a > span {
+  display: grid;
+  gap: 5px;
+}
+
+.side a small {
+  color: var(--gold);
 }
 
 .side strong,

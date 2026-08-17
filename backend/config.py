@@ -49,6 +49,13 @@ READ_ONLY_MODE = os.getenv("READ_ONLY_MODE", "false").lower() in {"1", "true", "
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "").strip()
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", "").strip().rstrip("/")
+LLM_API_KEY = os.getenv("LLM_API_KEY", "").strip()
+LLM_MODEL = os.getenv("LLM_MODEL", "").strip()
+LLM_TIMEOUT_SECONDS = min(max(float(os.getenv("LLM_TIMEOUT_SECONDS", "18")), 5), 60)
+LLM_MAX_CONTEXT_CHARS = min(max(int(os.getenv("LLM_MAX_CONTEXT_CHARS", "12000")), 2000), 30000)
+LLM_MAX_TOKENS = min(max(int(os.getenv("LLM_MAX_TOKENS", "900")), 200), 2000)
 default_cors_origins = (
     "http://localhost:5173,http://127.0.0.1:5173"
     if ENVIRONMENT != "production"

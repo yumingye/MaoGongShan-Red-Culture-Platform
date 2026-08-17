@@ -72,6 +72,19 @@ backend\.venv\Scripts\python.exe backend\check_api_contract.py
 
 Render 自动提供 `PORT`，不要在控制台写死端口。公开实例默认只读，管理员密钥由 Render 生成且不进入仓库。
 
+## 启用 RAG 大模型
+
+知识助手默认可使用 SQLite 本地检索；要启用真正的大模型组织回答，只需在现有后端服务的 **Environment** 中设置以下服务端变量，无需修改或重新构建前端：
+
+| 变量 | 值 |
+| --- | --- |
+| `LLM_PROVIDER` | 提供商标识，例如 `openai-compatible` |
+| `LLM_BASE_URL` | OpenAI 兼容接口根地址，例如以 `/v1` 结尾的 HTTPS 地址 |
+| `LLM_MODEL` | 该提供商实际可用的模型 ID |
+| `LLM_API_KEY` | 仅保存在 Render 后端的 Secret，不得写入仓库或前端变量 |
+
+模型异常、超时或返回格式不兼容时，接口会自动降级为本地知识库检索回答，并继续返回可核验来源。`LLM_TIMEOUT_SECONDS`、`LLM_MAX_CONTEXT_CHARS` 和 `LLM_MAX_TOKENS` 已由 Blueprint 配置。
+
 ## 上线验收
 
 依次验证：

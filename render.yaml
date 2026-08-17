@@ -23,6 +23,12 @@ services:
         value: https://maogongshan-red-culture-web-yumingye.onrender.com
       - key: FRONTEND_HOST
         value: maogongshan-red-culture-web-yumingye.onrender.com
+      - key: LLM_TIMEOUT_SECONDS
+        value: "18"
+      - key: LLM_MAX_CONTEXT_CHARS
+        value: "12000"
+      - key: LLM_MAX_TOKENS
+        value: "900"
       - key: ADMIN_PASSWORD
         generateValue: true
       - key: ADMIN_TOKEN

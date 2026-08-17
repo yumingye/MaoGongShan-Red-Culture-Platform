@@ -68,12 +68,20 @@ import PageHero from '../components/PageHero.vue'
 import SectionTitle from '../components/SectionTitle.vue'
 import SafeImage from '../components/SafeImage.vue'
 import photoLibrary from '../data/maogongshanPhotos.json'
+import researchLogs from '../data/research_logs.json'
 
-const list = ref([])
+const list = ref(researchLogs)
 const researchPhotos = photoLibrary.images
   .filter((item) => item.group === '社会实践与调研活动')
 
-onMounted(async () => { try { list.value = (await http.get('/api/research-logs')).data } catch { list.value = [] } })
+onMounted(async () => {
+  try {
+    const rows = (await http.get('/api/research-logs')).data
+    if (Array.isArray(rows) && rows.length) list.value = rows
+  } catch {
+    list.value = researchLogs
+  }
+})
 </script>
 
 <style scoped>

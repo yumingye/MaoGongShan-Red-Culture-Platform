@@ -57,6 +57,7 @@ class CdpClient {
     this.nextId = 1
     this.pending = new Map()
     this.events = []
+    this.closed = false
   }
 
   async open() {
@@ -64,6 +65,14 @@ class CdpClient {
       this.socket.addEventListener('open', resolve, { once: true })
       this.socket.addEventListener('error', reject, { once: true })
     })
+    const rejectPending = (reason) => {
+      this.closed = true
+      const error = reason instanceof Error ? reason : new Error('浏览器调试连接已关闭。')
+      for (const pending of this.pending.values()) pending.reject(error)
+      this.pending.clear()
+    }
+    this.socket.addEventListener('error', () => rejectPending(new Error('浏览器调试连接发生错误。')))
+    this.socket.addEventListener('close', () => rejectPending(new Error('浏览器调试连接意外关闭。')))
     this.socket.addEventListener('message', (event) => {
       const message = JSON.parse(event.data)
       if (message.id) {
@@ -79,10 +88,26 @@ class CdpClient {
   }
 
   send(method, params = {}) {
+    if (this.closed || this.socket.readyState !== WebSocket.OPEN) {
+      return Promise.reject(new Error(`浏览器调试连接不可用，无法执行 ${method}。`))
+    }
     const id = this.nextId
     this.nextId += 1
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject })
+      const timeout = setTimeout(() => {
+        this.pending.delete(id)
+        reject(new Error(`浏览器调试命令超时：${method}`))
+      }, 10000)
+      this.pending.set(id, {
+        resolve: (value) => {
+          clearTimeout(timeout)
+          resolve(value)
+        },
+        reject: (error) => {
+          clearTimeout(timeout)
+          reject(error)
+        }
+      })
       this.socket.send(JSON.stringify({ id, method, params }))
     })
   }
@@ -138,6 +163,9 @@ async function waitForPageSettled(cdp, label) {
         fonts: document.fonts?.status,
         textLength: (document.querySelector('#app')?.innerText || '').trim().length,
         mainTextLength: (document.querySelector('main')?.innerText || '').trim().length,
+        mainCount: document.querySelectorAll('main').length,
+        path: location.pathname,
+        bodyPreview: (document.body?.innerText || '').trim().slice(0, 500),
         transitions: [...document.querySelectorAll('.page-transition-enter-active,.page-transition-leave-active')]
           .map((element) => ({
             className: element.className,
@@ -192,6 +220,8 @@ const [figureId, storyId, placeId, imageId] = await Promise.all([
 const quickMode = process.env.BROWSER_QUICK === '1'
 const skipCrawl = process.env.BROWSER_SKIP_CRAWL === '1'
 const skipInteractions = process.env.BROWSER_SKIP_INTERACTIONS === '1'
+const interactionOnly = process.env.BROWSER_ONLY_INTERACTIONS === '1'
+const resilienceOnly = process.env.BROWSER_ONLY_RESILIENCE === '1'
 const allRoutes = [
   '/', '/party-history', '/learning/1', '/party-history/stage/agrarian-revolution', '/red-events', '/spirits', '/figures', '/figures/120', '/figures/140', '/timeline', '/scenery', '/resources', '/chat', '/map', '/school', '/research', '/team', '/news',
   '/exhibitions', '/exhibitions/red-zone', '/shandong-red', '/videos', '/videos/party-century', '/learning-challenge',
@@ -203,13 +233,17 @@ const allViewports = [
   { name: 'wide-desktop', width: 1920, height: 1080, mobile: false },
   { name: 'desktop', width: 1440, height: 1000, mobile: false },
   { name: 'compact-desktop', width: 1366, height: 768, mobile: false },
+  { name: 'laptop-1024', width: 1024, height: 768, mobile: false },
   { name: 'tablet', width: 820, height: 1100, mobile: true },
-  { name: 'mobile', width: 390, height: 844, mobile: true }
+  { name: 'tablet-768', width: 768, height: 1024, mobile: true },
+  { name: 'mobile-wide', width: 430, height: 932, mobile: true },
+  { name: 'mobile', width: 390, height: 844, mobile: true },
+  { name: 'mobile-small', width: 375, height: 812, mobile: true }
 ]
 const quickRoutes = process.env.BROWSER_ROUTE
   ? process.env.BROWSER_ROUTE.split(',').map((value) => value.trim()).filter(Boolean)
   : ['/', '/scenery', '/research', '/team', '/news']
-const routes = process.env.BROWSER_ROUTE ? quickRoutes : quickMode ? quickRoutes : allRoutes
+const routes = interactionOnly || resilienceOnly ? [] : process.env.BROWSER_ROUTE ? quickRoutes : quickMode ? quickRoutes : allRoutes
 const quickViewport = process.env.BROWSER_VIEWPORT || 'mobile'
 const requestedViewports = process.env.BROWSER_VIEWPORT
   ? process.env.BROWSER_VIEWPORT.split(',').map((value) => value.trim()).filter(Boolean)
@@ -221,10 +255,11 @@ const viewports = requestedViewports.length
     : allViewports
 const failures = []
 let crawledRouteCount = 0
+let cdp
 
 try {
   const target = await findPageTarget()
-  const cdp = new CdpClient(target.webSocketDebuggerUrl)
+  cdp = new CdpClient(target.webSocketDebuggerUrl)
   await cdp.open()
   await cdp.send('Page.enable')
   await cdp.send('Runtime.enable')
@@ -235,6 +270,7 @@ try {
   fs.mkdirSync(screenshotDir, { recursive: true })
 
   for (const viewport of viewports) {
+    console.log(`检查视口 ${viewport.name}（${viewport.width}×${viewport.height}），共 ${routes.length} 条核心路由…`)
     await cdp.send('Emulation.setDeviceMetricsOverride', {
       width: viewport.width,
       height: viewport.height,
@@ -243,10 +279,12 @@ try {
     })
 
     for (const route of routes) {
+      if (process.env.BROWSER_PROGRESS === '1') console.log(`  ${viewport.name} ${route}`)
       try {
         await navigateAndWait(cdp, `${webBase}${route}`, `${viewport.name} ${route}`)
       } catch (error) {
         failures.push(error.message)
+        console.error(`FAIL ${error.message}`)
         continue
       }
       let metrics
@@ -287,7 +325,7 @@ try {
 
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false })
 
-  if (!quickMode && !skipCrawl) {
+  if (!quickMode && !skipCrawl && !interactionOnly && !resilienceOnly) {
     const discovered = new Set()
     for (const seed of ['/', '/party-history', '/resources', '/research', '/scenery', '/about']) {
       await navigateAndWait(cdp, `${webBase}${seed}`, `链接发现 ${seed}`)
@@ -319,7 +357,8 @@ try {
     crawledRouteCount = discovered.size
   }
 
-  const interactions = quickMode || skipInteractions ? [] : [
+  const interactionFilters = (process.env.BROWSER_INTERACTION_FILTER || '').split(',').map((value) => value.trim()).filter(Boolean)
+  const interactions = (quickMode || skipInteractions || resilienceOnly ? [] : [
     {
       route: '/learning-challenge',
       action: `Boolean(document.querySelector('.question-card > button:not(.el-button)')?.click?.() ?? true)`,
@@ -373,8 +412,29 @@ try {
       action: `true`,
       assertion: `document.body.innerText.includes('百年党史时间长卷') && document.body.innerText.includes('图文微课')`,
       label: '本地图文微课全站搜索'
+    },
+    {
+      route: '/search',
+      action: `(() => { const tag=[...document.querySelectorAll('.search-tools .el-tag')].find(node=>node.innerText.includes('红色人物')); tag?.click(); return Boolean(tag) })()`,
+      assertion: `document.body.innerText.includes('人物档案') && !document.body.innerText.includes('共找到 0 条')`,
+      label: '全站搜索分类召回',
+      delay: 900
+    },
+    {
+      route: '/chat',
+      action: `(() => { const input=document.querySelector('.chat-input textarea'); if(!input)return false; input.value='毛公山有什么特色？'; input.dispatchEvent(new Event('input',{bubbles:true})); const send=[...document.querySelectorAll('.chat-input button')].find(node=>node.innerText.includes('发送')); send?.click(); return Boolean(send) })()`,
+      assertion: `document.querySelectorAll('.bubble.user').length >= 1 && document.querySelectorAll('.bubble.assistant').length >= 1`,
+      label: '知识助手提问与回答',
+      delay: 1200
+    },
+    {
+      route: '/chat',
+      action: `(() => { const clear=[...document.querySelectorAll('.chat-input button')].find(node=>node.innerText.includes('清空')); clear?.click(); return Boolean(clear) })()`,
+      assertion: `document.querySelectorAll('.bubble').length === 0 && document.body.innerText.includes('请选择推荐问题')`,
+      label: '知识助手清空对话',
+      delay: 250
     }
-  ]
+  ]).filter((item) => !interactionFilters.length || interactionFilters.some((filter) => item.label.includes(filter)))
   for (const interaction of interactions) {
     try {
       await navigateAndWait(cdp, `${webBase}${interaction.route}`, `交互 ${interaction.route}`)
@@ -383,12 +443,12 @@ try {
       continue
     }
     const actionResult = await cdp.send('Runtime.evaluate', { expression: interaction.action, returnByValue: true })
-    await delay(180)
+    await delay(interaction.delay || 180)
     const assertionResult = await cdp.send('Runtime.evaluate', { expression: interaction.assertion, returnByValue: true })
     if (!actionResult.result.value || !assertionResult.result.value) failures.push(`交互失败：${interaction.label} ${interaction.route}`)
   }
 
-  if (!quickMode) {
+  if (!quickMode && !interactionOnly) {
     await navigateAndWait(cdp, `${webBase}/scenery`, '媒体失败兜底')
     await cdp.send('Runtime.evaluate', { expression: `(() => { const img=document.querySelector('.safe-image img'); if(!img)return false; img.src='/assets/images/forced-missing-test.jpg'; return true })()`, returnByValue: true })
     await delay(500)
@@ -400,14 +460,19 @@ try {
       returnByValue: true
     })
     await cdp.send('Network.setBlockedURLs', { urls: [apiBlockPattern] })
+    const requestedOfflineRoutes = (process.env.BROWSER_RESILIENCE_ROUTE || '').split(',').map((value) => value.trim()).filter(Boolean)
     const offlineRoutes = [
       { route: '/', minText: 80, minImages: 3 },
       { route: '/overview', minText: 180, minImages: 0 },
       { route: '/project', minText: 120, minImages: 0 },
       { route: '/school', minText: 120, minImages: 1 },
       { route: '/team', minText: 180, minImages: 1, minMembers: 6 },
-      { route: '/guide', minText: 80, minImages: 0 }
-    ]
+      { route: '/guide', minText: 80, minImages: 0 },
+      { route: '/about', minText: 180, minImages: 2 },
+      { route: '/research', minText: 180, minImages: 2 },
+      { route: '/audio', minText: 80, minImages: 1 },
+      { route: '/sources', minText: 100, minImages: 0 }
+    ].filter((item) => !requestedOfflineRoutes.length || requestedOfflineRoutes.includes(item.route))
     for (const offlineRoute of offlineRoutes) {
       await navigateAndWait(cdp, `${webBase}${offlineRoute.route}`, `后端断连降级 ${offlineRoute.route}`)
       const offlinePage = await evaluateJson(cdp, `JSON.stringify({
@@ -461,11 +526,14 @@ try {
 
   if (failures.length) failures.forEach((failure) => console.error(`FAIL ${failure}`))
   else {
-    const extras = quickMode ? '' : '，以及断网、慢网和坏图降级'
+    const extras = !quickMode && !interactionOnly ? '，以及断网、慢网和坏图降级' : ''
     console.log(`浏览器布局检查通过：${viewports.length} 种视口 × ${routes.length} 条核心路由，${crawledRouteCount} 条页面生成链接，${interactions.length} 项真实交互${extras}。`)
   }
-  cdp.close()
 } finally {
+  if (cdp && !cdp.closed) {
+    try { await cdp.send('Browser.close') } catch { /* 浏览器可能已经自行退出。 */ }
+    cdp.close()
+  }
   browser.kill()
   await Promise.race([
     new Promise((resolve) => browser.once('exit', resolve)),

@@ -71,7 +71,7 @@ const navGroups = [
       { path: '/overview', label: '走进毛公山', desc: '地理、景观、路线与文化价值', icon: markRaw(Compass) },
       { path: '/history', label: '毛公山历史文化', desc: '地方文化资料查询与考证', icon: markRaw(Document) },
       { path: '/red-scenic', label: '红色景区', desc: '景点、服务设施与周边资源', icon: markRaw(MapLocation) },
-      { path: '/scenery', label: '图片影像馆', desc: '125 条本地化真实图片资料', icon: markRaw(Picture) },
+      { path: '/scenery', label: '图片影像馆', desc: '真实影像、来源与版权档案', icon: markRaw(Picture) },
       { path: '/map', label: '地图导览', desc: '点位、路线与无密钥降级导览', icon: markRaw(Guide) }
     ]
   },

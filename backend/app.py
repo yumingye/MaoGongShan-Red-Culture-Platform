@@ -2,19 +2,23 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 import secrets
 import shutil
 import sqlite3
+import unicodedata
 from contextlib import asynccontextmanager
 from datetime import datetime
+from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from PIL import Image, UnidentifiedImageError
+from pydantic import BaseModel, ConfigDict, Field
 
 try:
     from .config import (
@@ -55,6 +59,11 @@ try:
     from .sync_public_team_members import sync_team_members
 except ImportError:
     from sync_public_team_members import sync_team_members
+
+try:
+    from .ai_service import LLMServiceError, generate_rag_answer, llm_status
+except ImportError:
+    from ai_service import LLMServiceError, generate_rag_answer, llm_status
 
 try:
     from .sync_practice_writings import sync_practice_writings
@@ -108,8 +117,8 @@ app.add_middleware(
     allow_origins=CORS_ORIGINS,
     allow_origin_regex=CORS_ORIGIN_REGEX,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Accept", "Authorization", "Content-Type"],
 )
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
@@ -148,61 +157,126 @@ def now_text() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-class LoginIn(BaseModel):
-    username: str
-    password: str
+class InputModel(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
 
 
-class EventIn(BaseModel):
-    title: str
-    event_time: str = ""
-    location: str = ""
-    related_people: str = ""
-    summary: str = ""
-    details: str = ""
-    source: str = "公开资料来源"
-    reference_materials: str = "请补充地方志、档案馆资料、景区资料或公开报道链接。"
-    image_url: str = REAL_CULTURE_IMAGE
-    category: str = "历史事件"
-    verified: int = 1
-    verification_status: str = "公开资料"
+class LoginIn(InputModel):
+    username: str = Field(min_length=1, max_length=80)
+    password: str = Field(min_length=1, max_length=200)
 
 
-class FigureIn(BaseModel):
-    name: str
-    photo_url: str = REAL_CULTURE_IMAGE
-    active_period: str = "公开资料所示时期"
-    biography: str = ""
-    deeds: str = ""
-    relation_to_maogongshan: str = ""
-    related_events: str = ""
-    source: str = "公开资料来源"
-    verified: int = 1
-    verification_status: str = "公开资料"
+class EventIn(InputModel):
+    title: str = Field(min_length=1, max_length=200)
+    event_time: str = Field(default="", max_length=100)
+    location: str = Field(default="", max_length=200)
+    related_people: str = Field(default="", max_length=500)
+    summary: str = Field(default="", max_length=2000)
+    details: str = Field(default="", max_length=20000)
+    source: str = Field(default="公开资料来源", max_length=1000)
+    reference_materials: str = Field(default="请补充地方志、档案馆资料、景区资料或公开报道链接。", max_length=3000)
+    image_url: str = Field(default=REAL_CULTURE_IMAGE, max_length=2000)
+    category: str = Field(default="历史事件", max_length=100)
+    verified: int = Field(default=1, ge=0, le=1)
+    verification_status: str = Field(default="公开资料", max_length=100)
 
 
-class ResourceIn(BaseModel):
-    name: str
-    type: str
-    summary: str = ""
-    source: str = "公开资料来源"
-    file_url: str = ""
-    tags: str = ""
+class FigureIn(InputModel):
+    name: str = Field(min_length=1, max_length=120)
+    photo_url: str = Field(default=REAL_CULTURE_IMAGE, max_length=2000)
+    active_period: str = Field(default="公开资料所示时期", max_length=200)
+    biography: str = Field(default="", max_length=12000)
+    deeds: str = Field(default="", max_length=12000)
+    relation_to_maogongshan: str = Field(default="", max_length=4000)
+    related_events: str = Field(default="", max_length=4000)
+    source: str = Field(default="公开资料来源", max_length=1000)
+    verified: int = Field(default=1, ge=0, le=1)
+    verification_status: str = Field(default="公开资料", max_length=100)
 
 
-class ScenicImageIn(BaseModel):
-    name: str
-    category: str
-    description: str = ""
-    location: str = "青岛市城阳区惜福镇街道毛公山周边"
-    shot_time: str = ""
-    source: str = "公开资料来源"
-    image_url: str = REAL_HERO_IMAGE
-    recommendation_index: int = 4
+class ResourceIn(InputModel):
+    name: str = Field(min_length=1, max_length=200)
+    type: str = Field(min_length=1, max_length=100)
+    summary: str = Field(default="", max_length=5000)
+    source: str = Field(default="公开资料来源", max_length=1000)
+    file_url: str = Field(default="", max_length=2000)
+    tags: str = Field(default="", max_length=1000)
 
 
-class ChatIn(BaseModel):
-    question: str
+class ScenicImageIn(InputModel):
+    name: str = Field(min_length=1, max_length=200)
+    category: str = Field(min_length=1, max_length=100)
+    description: str = Field(default="", max_length=5000)
+    location: str = Field(default="青岛市城阳区惜福镇街道毛公山周边", max_length=300)
+    shot_time: str = Field(default="", max_length=100)
+    source: str = Field(default="公开资料来源", max_length=1000)
+    image_url: str = Field(default=REAL_HERO_IMAGE, max_length=2000)
+    recommendation_index: int = Field(default=4, ge=1, le=5)
+
+
+class ChatTurn(InputModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=2000)
+
+
+class ChatIn(InputModel):
+    question: str = Field(min_length=1, max_length=300)
+    history: list[ChatTurn] = Field(default_factory=list, max_length=12)
+
+
+def normalize_question_text(value: str) -> str:
+    """Normalize common spoken variants while preserving the user's meaning."""
+    normalized = unicodedata.normalize("NFKC", value).strip()
+    normalized = re.sub(r"\s+", " ", normalized)
+    aliases = {
+        "毛公三": "毛公山",
+        "毛工山": "毛公山",
+        "毛功山": "毛公山",
+        "咋去": "怎么前往",
+        "怎么走": "怎么前往",
+        "怎么玩": "怎么游览",
+        "有啥": "有什么",
+        "党史课": "党史学习",
+    }
+    for source, target in aliases.items():
+        normalized = normalized.replace(source, target)
+    return normalized
+
+
+def text_bigrams(value: str) -> set[str]:
+    compact = re.sub(r"[^\w\u4e00-\u9fff]", "", value.lower())
+    return {compact[index:index + 2] for index in range(max(len(compact) - 1, 0))}
+
+
+def normalize_search_text(value: str) -> str:
+    """Turn natural-language search prompts into stable repository keywords."""
+    normalized = normalize_question_text(value)
+    normalized = re.sub(r"[，。！？、,.!?;；:：]", " ", normalized)
+    for phrase in ["请问", "帮我查找", "帮我搜索", "介绍一下", "相关资料", "在哪里", "是什么", "有哪些", "有什么", "怎么", "如何"]:
+        normalized = normalized.replace(phrase, " ")
+    compact = re.sub(r"\s+", " ", normalized).strip()
+    return compact or normalize_question_text(value)
+
+
+def search_table(
+    conn: sqlite3.Connection,
+    table: str,
+    select_fields: str,
+    title_field: str,
+    search_fields: list[str],
+    query: str,
+    limit: int = 12,
+) -> list[dict[str, Any]]:
+    """Search trusted table/column definitions with title-first relevance ordering."""
+    contains = f"%{query}%"
+    prefix = f"{query}%"
+    where = " OR ".join(f"{field} LIKE ?" for field in search_fields)
+    sql = (
+        f"SELECT {select_fields} FROM {table} WHERE {where} "
+        f"ORDER BY CASE WHEN {title_field} = ? THEN 0 WHEN {title_field} LIKE ? THEN 1 ELSE 2 END, id DESC LIMIT ?"
+    )
+    params = [contains] * len(search_fields) + [query, prefix, limit]
+    return rows_to_list(conn.execute(sql, params).fetchall())
 
 
 def ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
@@ -658,6 +732,10 @@ def build_event_filters(keyword: str, title: str, event_time: str, location: str
 @app.middleware("http")
 async def record_visit(request, call_next):
     response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     if request.url.path.startswith("/api") and not READ_ONLY_MODE:
         try:
             with get_conn() as conn:
@@ -763,8 +841,8 @@ def list_events(
     person: str = "",
     category: str = "",
     verification_status: str = "",
-    page: int = 0,
-    page_size: int = 0,
+    page: int = Query(default=0, ge=0),
+    page_size: int = Query(default=0, ge=0, le=500),
 ):
     where, values = build_event_filters(keyword, title, event_time, location, person, category, verification_status)
     with get_conn() as conn:
@@ -807,25 +885,33 @@ def create_event(payload: EventIn):
 @app.put("/api/admin/events/{event_id}", dependencies=[Depends(require_admin)])
 def update_event(event_id: int, payload: EventIn):
     with get_conn() as conn:
-        conn.execute(
+        cursor = conn.execute(
             """
             UPDATE historical_events SET title=?, event_time=?, location=?, related_people=?, summary=?, details=?,
             source=?, reference_materials=?, image_url=?, category=?, verified=?, verification_status=? WHERE id=?
             """,
             (payload.title, payload.event_time, payload.location, payload.related_people, payload.summary, payload.details, payload.source, payload.reference_materials, payload.image_url, payload.category, payload.verified, payload.verification_status, event_id),
         )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="资料不存在")
     return {"ok": True}
 
 
 @app.delete("/api/admin/events/{event_id}", dependencies=[Depends(require_admin)])
 def delete_event(event_id: int):
     with get_conn() as conn:
-        conn.execute("DELETE FROM historical_events WHERE id=?", (event_id,))
+        cursor = conn.execute("DELETE FROM historical_events WHERE id=?", (event_id,))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="资料不存在")
     return {"ok": True}
 
 
 @app.get("/api/figures")
-def list_figures(keyword: str = "", page: int = 0, page_size: int = 0):
+def list_figures(
+    keyword: str = "",
+    page: int = Query(default=0, ge=0),
+    page_size: int = Query(default=0, ge=0, le=500),
+):
     where = "WHERE name LIKE ? OR biography LIKE ? OR deeds LIKE ? OR relation_to_maogongshan LIKE ? OR active_period LIKE ?" if keyword else ""
     values = [f"%{keyword}%"] * 5 if keyword else []
     with get_conn() as conn:
@@ -867,25 +953,34 @@ def create_figure(payload: FigureIn):
 @app.put("/api/admin/figures/{figure_id}", dependencies=[Depends(require_admin)])
 def update_figure(figure_id: int, payload: FigureIn):
     with get_conn() as conn:
-        conn.execute(
+        cursor = conn.execute(
             """
             UPDATE historical_figures SET name=?, photo_url=?, active_period=?, biography=?, deeds=?, relation_to_maogongshan=?,
             related_events=?, source=?, verified=?, verification_status=? WHERE id=?
             """,
             (payload.name, payload.photo_url, payload.active_period, payload.biography, payload.deeds, payload.relation_to_maogongshan, payload.related_events, payload.source, payload.verified, payload.verification_status, figure_id),
         )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="人物不存在")
     return {"ok": True}
 
 
 @app.delete("/api/admin/figures/{figure_id}", dependencies=[Depends(require_admin)])
 def delete_figure(figure_id: int):
     with get_conn() as conn:
-        conn.execute("DELETE FROM historical_figures WHERE id=?", (figure_id,))
+        cursor = conn.execute("DELETE FROM historical_figures WHERE id=?", (figure_id,))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="人物不存在")
     return {"ok": True}
 
 
 @app.get("/api/resources")
-def list_resources(keyword: str = "", type: str = "", page: int = 0, page_size: int = 0):
+def list_resources(
+    keyword: str = "",
+    type: str = "",
+    page: int = Query(default=0, ge=0),
+    page_size: int = Query(default=0, ge=0, le=500),
+):
     clauses: list[str] = []
     values: list[str] = []
     if keyword:
@@ -929,17 +1024,21 @@ def create_resource(payload: ResourceIn):
 @app.put("/api/admin/resources/{resource_id}", dependencies=[Depends(require_admin)])
 def update_resource(resource_id: int, payload: ResourceIn):
     with get_conn() as conn:
-        conn.execute(
+        cursor = conn.execute(
             "UPDATE resources SET name=?, type=?, summary=?, source=?, file_url=?, tags=? WHERE id=?",
             (payload.name, payload.type, payload.summary, payload.source, payload.file_url, payload.tags, resource_id),
         )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="资源不存在")
     return {"ok": True}
 
 
 @app.delete("/api/admin/resources/{resource_id}", dependencies=[Depends(require_admin)])
 def delete_resource(resource_id: int):
     with get_conn() as conn:
-        conn.execute("DELETE FROM resources WHERE id=?", (resource_id,))
+        cursor = conn.execute("DELETE FROM resources WHERE id=?", (resource_id,))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="资源不存在")
     return {"ok": True}
 
 
@@ -975,28 +1074,49 @@ def create_scenic_image(payload: ScenicImageIn):
 @app.put("/api/admin/scenic-images/{image_id}", dependencies=[Depends(require_admin)])
 def update_scenic_image(image_id: int, payload: ScenicImageIn):
     with get_conn() as conn:
-        conn.execute(
+        cursor = conn.execute(
             """
             UPDATE scenic_images SET name=?, category=?, description=?, location=?, shot_time=?, source=?, image_url=?, recommendation_index=? WHERE id=?
             """,
             (payload.name, payload.category, payload.description, payload.location, payload.shot_time, payload.source, payload.image_url, payload.recommendation_index, image_id),
         )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="图片不存在")
     return {"ok": True}
 
 
 @app.delete("/api/admin/scenic-images/{image_id}", dependencies=[Depends(require_admin)])
 def delete_scenic_image(image_id: int):
     with get_conn() as conn:
-        conn.execute("DELETE FROM scenic_images WHERE id=?", (image_id,))
+        cursor = conn.execute("DELETE FROM scenic_images WHERE id=?", (image_id,))
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="图片不存在")
     return {"ok": True}
 
 
 @app.post("/api/admin/upload", dependencies=[Depends(require_admin)])
 def upload_image(file: UploadFile = File(...), category: str = Form(default="uploads")):
     suffix = Path(file.filename or "").suffix.lower()
-    if suffix not in [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"]:
-        raise HTTPException(status_code=400, detail="仅支持常见图片格式")
-    filename = f"{category}-{datetime.now().strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(4)}{suffix}"
+    if suffix not in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
+        raise HTTPException(status_code=400, detail="仅支持 JPG、PNG、GIF 或 WebP 图片")
+    file.file.seek(0, 2)
+    size = file.file.tell()
+    file.file.seek(0)
+    if size <= 0 or size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="图片不能为空且大小不能超过 10MB")
+    try:
+        with Image.open(file.file) as candidate:
+            detected_format = candidate.format
+            candidate.verify()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        raise HTTPException(status_code=400, detail="文件内容不是有效且安全的图片")
+    suffix_by_format = {"JPEG": ".jpg", "PNG": ".png", "GIF": ".gif", "WEBP": ".webp"}
+    if detected_format not in suffix_by_format:
+        raise HTTPException(status_code=400, detail="图片编码格式不受支持")
+    suffix = suffix_by_format[detected_format]
+    file.file.seek(0)
+    safe_category = re.sub(r"[^a-zA-Z0-9_-]+", "-", category.strip()).strip("-") or "uploads"
+    filename = f"{safe_category[:40]}-{datetime.now().strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(4)}{suffix}"
     target = IMAGE_DIR / filename
     with target.open("wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -1141,7 +1261,12 @@ def get_audio_guide(item_id: int):
 
 
 @app.get("/api/red-stories")
-def list_red_stories(keyword: str = "", category: str = "", page: int = 1, page_size: int = 12):
+def list_red_stories(
+    keyword: str = "",
+    category: str = "",
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=12, ge=1, le=500),
+):
     where = ["1=1"]
     params: list[Any] = []
     if keyword:
@@ -1174,7 +1299,12 @@ def get_red_story(item_id: int):
 
 
 @app.get("/api/places")
-def list_places(keyword: str = "", category: str = "", page: int = 1, page_size: int = 12):
+def list_places(
+    keyword: str = "",
+    category: str = "",
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=12, ge=1, le=500),
+):
     where = ["1=1"]
     params: list[Any] = []
     if keyword:
@@ -1207,7 +1337,12 @@ def get_place(item_id: int):
 
 
 @app.get("/api/achievements")
-def list_achievements(keyword: str = "", category: str = "", page: int = 1, page_size: int = 12):
+def list_achievements(
+    keyword: str = "",
+    category: str = "",
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=12, ge=1, le=500),
+):
     where = ["1=1"]
     params: list[Any] = []
     if keyword:
@@ -1244,8 +1379,8 @@ def list_learning_articles(
     keyword: str = "",
     category: str = "",
     sub_category: str = "",
-    page: int = 1,
-    page_size: int = 12,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=12, ge=1, le=500),
 ):
     """党史学习与红色文化拓展资料，和毛公山地方史数据分表管理。"""
     where = ["1=1"]
@@ -1308,7 +1443,8 @@ def get_learning_article(item_id: int):
             """,
             (item_id,),
         ).fetchall()
-        conn.execute("UPDATE learning_articles SET views = views + 1 WHERE id = ?", (item_id,))
+        if not READ_ONLY_MODE:
+            conn.execute("UPDATE learning_articles SET views = views + 1 WHERE id = ?", (item_id,))
     data = row_to_dict(row)
     data["related"] = rows_to_list(related)
     data["media"] = rows_to_list(media)
@@ -1351,7 +1487,8 @@ def rebuild_knowledge():
 
 
 def search_knowledge(conn: sqlite3.Connection, question: str, limit: int = 5) -> list[dict[str, Any]]:
-    words = [word for word in question.replace("？", " ").replace("?", " ").replace("，", " ").split() if word]
+    question = normalize_question_text(question)
+    words = [word for word in re.sub(r"[，。！？、,.!?;；:：]", " ", question).split() if word]
     domain_terms = [
         "毛公山", "在哪里", "位置", "景色", "风景", "计划", "活动", "实践", "团队", "数字资源库",
         "历史资料", "查询", "来源", "考证", "前往", "路线", "地图", "成果", "短视频",
@@ -1376,10 +1513,17 @@ def search_knowledge(conn: sqlite3.Connection, question: str, limit: int = 5) ->
         if any(term not in corpus for term in requested_precision_terms):
             return []
     scored: list[tuple[int, dict[str, Any]]] = []
+    question_bigrams = text_bigrams(question)
     for row in rows:
         text = f"{row.get('title','')} {row.get('summary','')} {row.get('content','')} {row.get('category','')}"
         score = sum(text.count(word) for word in words)
         title = row.get("title", "")
+        overlap = len(question_bigrams & text_bigrams(f"{title} {row.get('summary', '')}"))
+        if overlap >= 2:
+            score += overlap * 2
+        similarity = SequenceMatcher(None, question, title).ratio()
+        if similarity >= 0.35:
+            score += max(2, round(similarity * 10))
         for term in domain_terms:
             if term in question and term in title:
                 score += 40
@@ -1425,26 +1569,95 @@ def school_knowledge_docs() -> list[dict[str, Any]]:
     return docs
 
 
+def source_payload(docs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return stable, de-duplicated citations separately from generated prose."""
+    sources: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for doc in docs[:6]:
+        title = str(doc.get("title") or "资源库资料")
+        url = str(doc.get("source_url") or "/sources")
+        key = (title, url)
+        if key in seen:
+            continue
+        seen.add(key)
+        sources.append(
+            {
+                "title": title,
+                "source_name": doc.get("source_name") or "毛公山数字资源库",
+                "source_url": url,
+                "verification_status": doc.get("verification_status") or "来源已标注",
+            }
+        )
+    return sources
+
+
+def local_retrieval_answer(docs: list[dict[str, Any]]) -> str:
+    """Natural Chinese fallback when an external model is not configured."""
+    if not docs:
+        return "当前资源库暂未收录足够资料。建议查阅平台已标注的权威来源，或联系项目团队补充核验。"
+    paragraphs: list[str] = []
+    for doc in docs[:4]:
+        summary = str(doc.get("summary") or doc.get("content") or "").strip()
+        summary = re.sub(r"\s+", " ", summary)[:260].rstrip("。；; ")
+        if summary and summary not in paragraphs:
+            paragraphs.append(summary)
+    if not paragraphs:
+        return "当前资源库暂未收录足够资料。"
+    answer = "从当前资源库收录内容来看，" + "。\n\n".join(paragraphs) + "。"
+    statuses = " ".join(str(doc.get("verification_status") or "") for doc in docs)
+    if any(word in statuses for word in ["待考证", "需继续核验", "整理", "二级来源"]):
+        answer += "\n\n其中部分内容仍处于资料整理或继续核验阶段，正式引用时请结合下方来源与权威资料复核。"
+    return answer
+
+
+def follow_up_suggestions(question: str, docs: list[dict[str, Any]]) -> list[str]:
+    categories = " ".join(str(doc.get("category") or "") for doc in docs)
+    candidates = [
+        "这些资料的来源和核验状态是什么？",
+        "平台还收录了哪些相关图片？",
+        "有哪些内容仍需要继续核验？",
+    ]
+    if any(term in question + categories for term in ["路线", "景点", "导览", "风景"]):
+        candidates.insert(0, "第一次到毛公山，如何安排游览路线？")
+    if any(term in question + categories for term in ["实践", "团队", "软件学院"]):
+        candidates.insert(0, "山东大学软件学院团队具体做了哪些工作？")
+    if any(term in question + categories for term in ["党史", "红色", "历史"]):
+        candidates.insert(0, "这些红色文化内容与党史学习有什么联系？")
+    return list(dict.fromkeys(candidates))[:4]
+
+
 
 @app.get("/api/chat/suggestions")
 def chat_suggestions():
-    return [
+    suggestions = [
         "毛公山在哪里？",
-        "毛公山有什么景色？",
-        "毛公山有哪些红色文化资料？",
-        "怎么游览毛公山？",
-        "这个平台是谁开发的？",
-        "山东大学软件学院做了什么？",
-        "实践团队计划开展哪些活动？",
-        "数字资源库有哪些内容？",
-        "图片资料是否有来源说明？",
+        "毛公山为什么叫毛公山？",
+        "毛公山有哪些红色文化内容？",
+        "怎么规划毛公山游览路线？",
+        "山东大学软件学院为什么建设这个平台？",
+        "团队进行了哪些社会实践？",
+        "这些图片来自哪里？",
         "哪些内容需要继续核验？",
     ]
+    offset = datetime.now().timetuple().tm_yday % len(suggestions)
+    return (suggestions[offset:] + suggestions[:offset])[:7]
+
+
+@app.get("/api/chat/status")
+def chat_status():
+    status = llm_status()
+    try:
+        with get_conn() as conn:
+            status["knowledge_documents"] = conn.execute("SELECT COUNT(*) FROM knowledge_documents").fetchone()[0]
+    except sqlite3.Error:
+        status["knowledge_documents"] = 0
+    status["fallback_available"] = True
+    return status
 
 
 @app.post("/api/chat")
 def chat(payload: ChatIn):
-    question = payload.question.strip()
+    question = normalize_question_text(payload.question)
     if not question:
         raise HTTPException(status_code=400, detail="问题不能为空")
     with get_conn() as conn:
@@ -1452,56 +1665,78 @@ def chat(payload: ChatIn):
         school_terms = ["软件学院", "山东大学", "谁开发", "为什么做", "技术路线", "系统架构", "山软青年"]
         if any(term in question for term in school_terms):
             docs = (school_knowledge_docs() + docs)[:5]
-        if not docs:
-            answer = "当前资源库中暂未收录足够资料，建议联系项目团队或查阅权威来源。"
-            sources: list[dict[str, Any]] = []
-        else:
-            snippets = []
-            needs_review = False
-            for doc in docs[:5]:
-                status = doc.get("verification_status") or "来源已标注"
-                summary = doc.get("summary") or (doc.get("content") or "")[:160]
-                snippets.append(f"【{doc.get('category') or '资料'}】{summary}（状态：{status}）")
-                if any(word in status for word in ["待考证", "需继续核验", "整理", "二级来源"]):
-                    needs_review = True
-            answer = "根据当前资源库知识库检索结果：\n" + "\n".join(snippets)
-            if needs_review:
-                answer += "\n\n提示：以上内容包含公开资料整理或实践团队整理条目，正式引用前请结合页面来源、权威资料或景区管理方说明继续核验。"
-            sources = [
-                {
-                    "title": doc["title"],
-                    "source_name": doc["source_name"],
-                    "source_url": doc["source_url"],
-                    "verification_status": doc["verification_status"],
-                }
-                for doc in docs
-            ]
+        sources = source_payload(docs)
+        mode = "local_retrieval"
+        degraded = False
+        notice = ""
+        history = [turn.model_dump() for turn in payload.history]
+        try:
+            answer = generate_rag_answer(question, docs, history)
+            mode = "rag_llm"
+        except LLMServiceError as error:
+            answer = local_retrieval_answer(docs)
+            degraded = llm_status()["configured"]
+            if degraded:
+                notice = "大模型服务暂时不可用，已自动切换为本地知识库回答。"
+                logger.warning("RAG generation degraded to local retrieval: %s", error)
         if not READ_ONLY_MODE:
-            conn.execute("INSERT INTO chat_records(question, answer, mode, created_at) VALUES (?, ?, ?, ?)", (question, answer, "local_retrieval", now_text()))
-    return {"answer": answer, "sources": sources, "mode": "local_retrieval"}
+            conn.execute("INSERT INTO chat_records(question, answer, mode, created_at) VALUES (?, ?, ?, ?)", (question, answer, mode, now_text()))
+    return {
+        "answer": answer,
+        "sources": sources,
+        "mode": mode,
+        "degraded": degraded,
+        "notice": notice,
+        "follow_up_suggestions": follow_up_suggestions(question, docs),
+    }
 
 
 @app.get("/api/search")
-def search(q: str = Query(default="")):
-    keyword = f"%{q}%"
+def search(q: str = Query(default="", max_length=100)):
+    q = unicodedata.normalize("NFKC", q).strip()
     if not q:
-        return {"events": [], "figures": [], "resources": [], "images": [], "spots": [], "learning": []}
-    with get_conn() as conn:
         return {
-            "events": rows_to_list(conn.execute("SELECT id, title, summary, category, image_url FROM historical_events WHERE title LIKE ? OR summary LIKE ? OR details LIKE ? LIMIT 12", (keyword, keyword, keyword)).fetchall()),
-            "figures": rows_to_list(conn.execute("SELECT id, name, biography, deeds, photo_url FROM historical_figures WHERE name LIKE ? OR biography LIKE ? OR deeds LIKE ? LIMIT 12", (keyword, keyword, keyword)).fetchall()),
-            "resources": rows_to_list(conn.execute("SELECT id, name, type, summary, file_url FROM resources WHERE name LIKE ? OR summary LIKE ? OR tags LIKE ? LIMIT 12", (keyword, keyword, keyword)).fetchall()),
-            "images": rows_to_list(conn.execute("SELECT id, title AS name, category, description, image_url FROM images WHERE title LIKE ? OR description LIKE ? OR category LIKE ? LIMIT 12", (keyword, keyword, keyword)).fetchall()),
-            "spots": rows_to_list(conn.execute("SELECT id, name, type, description FROM scenic_spots WHERE name LIKE ? OR description LIKE ? OR type LIKE ? LIMIT 12", (keyword, keyword, keyword)).fetchall()),
-            "learning": rows_to_list(conn.execute("SELECT id, title, summary, category, event_time, image, scope FROM learning_articles WHERE title LIKE ? OR summary LIKE ? OR content LIKE ? OR tags LIKE ? LIMIT 20", (keyword, keyword, keyword, keyword)).fetchall()),
+            "events": [], "figures": [], "resources": [], "images": [], "spots": [], "learning": [],
+            "stories": [], "places": [], "achievements": [], "research": [],
+        }
+    query = normalize_search_text(q)
+    with get_conn() as conn:
+        figure_results = search_table(
+            conn, "historical_figures", "id, name, biography, deeds, active_period, photo_url",
+            "name", ["name", "biography", "deeds", "active_period"], query,
+        )
+        if not figure_results and any(term in q for term in ["红色人物", "革命人物", "人物档案"]):
+            figure_results = rows_to_list(conn.execute(
+                "SELECT id, name, biography, deeds, active_period, photo_url FROM historical_figures ORDER BY verified DESC, id DESC LIMIT 12"
+            ).fetchall())
+        story_results = search_table(
+            conn, "red_stories", "id, title, summary, category, date, location, image",
+            "title", ["title", "summary", "content", "tags", "location"], query,
+        )
+        if not story_results and "红色故事" in q:
+            story_results = rows_to_list(conn.execute(
+                "SELECT id, title, summary, category, date, location, image FROM red_stories ORDER BY id DESC LIMIT 12"
+            ).fetchall())
+        return {
+            "events": search_table(conn, "historical_events", "id, title, summary, category, event_time, image_url", "title", ["title", "summary", "details", "category", "location", "related_people"], query),
+            "figures": figure_results,
+            "resources": search_table(conn, "resources", "id, name, type, summary, file_url", "name", ["name", "summary", "tags", "type"], query),
+            "images": search_table(conn, "images", "id, title AS name, category, description, image_url", "title", ["title", "description", "category", "location"], query),
+            "spots": search_table(conn, "scenic_spots", "id, name, type, description, image_url", "name", ["name", "description", "type", "route_hint"], query),
+            "learning": search_table(conn, "learning_articles", "id, title, summary, category, event_time, image, scope", "title", ["title", "summary", "content", "tags", "category"], query, 20),
+            "stories": story_results,
+            "places": search_table(conn, "places", "id, title, summary, category, date, location, image", "title", ["title", "summary", "content", "tags", "location"], query),
+            "achievements": search_table(conn, "achievements", "id, title, summary, category, date, location, image", "title", ["title", "summary", "content", "tags"], query),
+            "research": search_table(conn, "research_logs", "id, title, summary, category, date, location, image", "title", ["title", "summary", "content", "tags", "location"], query),
         }
 
 
 @app.get("/api/search/suggestions")
-def search_suggestions(q: str = Query(default="")):
-    keyword = f"%{q.strip()}%"
+def search_suggestions(q: str = Query(default="", max_length=100)):
+    q = normalize_search_text(q) if q.strip() else ""
+    keyword = f"%{q}%"
     with get_conn() as conn:
-        if not q.strip():
+        if not q:
             base = ["毛公山", "红色故事", "山东大学软件学院", "实践调研", "登山路线", "图片来源", "城阳红色文化", "数字地图"]
             return {"items": base}
         rows = []
@@ -1510,6 +1745,10 @@ def search_suggestions(q: str = Query(default="")):
         rows += [row["name"] for row in conn.execute("SELECT name FROM resources WHERE name LIKE ? LIMIT 5", (keyword,)).fetchall()]
         rows += [row["title"] for row in conn.execute("SELECT title FROM images WHERE title LIKE ? LIMIT 5", (keyword,)).fetchall()]
         rows += [row["title"] for row in conn.execute("SELECT title FROM learning_articles WHERE title LIKE ? OR tags LIKE ? LIMIT 8", (keyword, keyword)).fetchall()]
+        rows += [row["title"] for row in conn.execute("SELECT title FROM red_stories WHERE title LIKE ? OR tags LIKE ? LIMIT 5", (keyword, keyword)).fetchall()]
+        rows += [row["title"] for row in conn.execute("SELECT title FROM places WHERE title LIKE ? OR tags LIKE ? LIMIT 5", (keyword, keyword)).fetchall()]
+        rows += [row["title"] for row in conn.execute("SELECT title FROM achievements WHERE title LIKE ? OR tags LIKE ? LIMIT 5", (keyword, keyword)).fetchall()]
+        rows += [row["title"] for row in conn.execute("SELECT title FROM research_logs WHERE title LIKE ? OR tags LIKE ? LIMIT 5", (keyword, keyword)).fetchall()]
         return {"items": list(dict.fromkeys(rows))[:12]}
 
 

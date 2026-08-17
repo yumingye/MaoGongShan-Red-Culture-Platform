@@ -249,7 +249,8 @@ def _looks_incomplete(answer: str, persona: str) -> bool:
     if persona != "guide":
         return False
     compact = answer.strip()
-    return len(compact) < 160 or compact.endswith(("—", "-", "：", ":", "，", ",", "、"))
+    complete_endings = ("。", "！", "？", ".", "!", "?", "）", ")", "】", "]", "”", "’")
+    return len(compact) < 160 or not compact.endswith(complete_endings)
 
 
 def generate_rag_answer(

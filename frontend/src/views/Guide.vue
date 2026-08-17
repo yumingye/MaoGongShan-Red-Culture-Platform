@@ -94,7 +94,7 @@ async function ask() {
     })
     statusText.value = res.data?.degraded
       ? '模型服务暂时降级，当前内容来自本地知识库。'
-      : `${res.data?.model || 'DeepSeek'} · ${res.data?.web_search_used ? '已联网核验' : '本地知识增强'} · ${res.data?.latency_ms || 0} ms`
+      : `${res.data?.model || 'DeepSeek'} · ${res.data?.web_search_results > 0 ? '已联网核验' : (res.data?.web_search_used ? '已联网检索，暂无可靠结果' : '本地知识增强')} · ${res.data?.latency_ms || 0} ms`
   } catch {
     messages.value.push({ role: 'assistant', content: '问答服务暂时无法连接。你仍可播放下方已有讲解，或稍后重试。', sources: [] })
     statusText.value = '讲解服务连接失败'

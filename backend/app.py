@@ -1701,13 +1701,14 @@ def chat(payload: ChatIn):
         if any(term in question for term in school_terms):
             docs = (school_knowledge_docs() + docs)[:5]
             retrieval_quality = "high"
-        web_search_used = False
         should_search_web = payload.web_search is True or (payload.web_search is not False and is_realtime_question(question))
+        web_search_used = should_search_web
+        web_search_results = 0
         if should_search_web:
             web_docs = search_web(question)
+            web_search_results = len(web_docs)
             if web_docs:
                 docs = (web_docs + docs)[:7]
-                web_search_used = True
                 retrieval_quality = "high" if len(web_docs) >= 2 else "partial"
         sources = source_payload(docs)
         mode = "local_retrieval"
@@ -1752,6 +1753,7 @@ def chat(payload: ChatIn):
         "model": status["model"],
         "rag_used": bool(docs),
         "web_search_used": web_search_used,
+        "web_search_results": web_search_results,
         "retrieval_quality": retrieval_quality,
         "retrieved_docs": len(docs),
         "latency_ms": latency_ms,

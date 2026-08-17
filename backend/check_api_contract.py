@@ -141,7 +141,7 @@ def main() -> int:
                 ],
             },
         )
-        expected = {"answer", "sources", "mode", "degraded", "notice", "provider_error", "follow_up_suggestions", "persona", "rag_used", "web_search_used", "retrieval_quality", "latency_ms"}
+        expected = {"answer", "sources", "mode", "degraded", "notice", "provider_error", "follow_up_suggestions", "persona", "rag_used", "web_search_used", "web_search_results", "retrieval_quality", "latency_ms"}
         if not expected.issubset(payload):
             raise AssertionError(f"missing chat response fields: {sorted(expected - set(payload))}")
         if payload.get("persona") != "guide":

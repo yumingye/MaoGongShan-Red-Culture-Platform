@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+from email.message import Message
+from io import BytesIO
 from unittest.mock import patch
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 from backend import ai_service
 
@@ -33,6 +35,12 @@ class FakeResponse:
         return json.dumps(self.payload, ensure_ascii=False).encode("utf-8")
 
 
+def redirect_error(url: str, location: str, status: int = 307) -> HTTPError:
+    headers = Message()
+    headers["Location"] = location
+    return HTTPError(url, status, "redirect", headers, BytesIO(b""))
+
+
 def main() -> int:
     context = ai_service.build_context(DOCS)
     assert "毛公山资料" in context and "核验状态：已核验" in context
@@ -44,8 +52,9 @@ def main() -> int:
         "LLM_MODEL": "test-model",
     }
     with patch.multiple(ai_service, **configured):
+        assert ai_service._endpoint() == "https://example.invalid/v1/chat/completions"
         assert ai_service.generate_rag_answer("未知问题", []) == "当前资源库暂未收录足够资料。"
-        with patch.object(ai_service, "urlopen", return_value=FakeResponse({"choices": [{"message": {"content": "仅依据资料库回答。"}}]})) as mocked:
+        with patch.object(ai_service._HTTP_OPENER, "open", return_value=FakeResponse({"choices": [{"message": {"content": "仅依据资料库回答。"}}]})) as mocked:
             answer = ai_service.generate_rag_answer("毛公山在哪里？", DOCS, [{"role": "user", "content": "请介绍毛公山"}])
             assert answer == "仅依据资料库回答。"
             request = mocked.call_args.args[0]
@@ -53,7 +62,33 @@ def main() -> int:
             assert body["model"] == "test-model"
             assert "知识库资料" in body["messages"][-1]["content"]
 
-        with patch.object(ai_service, "urlopen", side_effect=URLError("timeout")):
+        redirect = redirect_error(
+            "https://example.invalid/v1/chat/completions",
+            "/v1/chat/completions/",
+        )
+        success = FakeResponse({"choices": [{"message": {"content": "重定向后回答成功。"}}]})
+        with patch.object(ai_service._HTTP_OPENER, "open", side_effect=[redirect, success]) as mocked:
+            with patch.object(ai_service.logger, "warning") as warning:
+                answer = ai_service.generate_rag_answer("毛公山在哪里？", DOCS)
+            assert answer == "重定向后回答成功。"
+            assert mocked.call_count == 2
+            assert mocked.call_args_list[0].args[0].full_url == "https://example.invalid/v1/chat/completions"
+            assert mocked.call_args_list[1].args[0].full_url == "https://example.invalid/v1/chat/completions/"
+            assert "test-key" not in " ".join(map(str, warning.call_args.args))
+
+        unsafe_redirect = redirect_error(
+            "https://example.invalid/v1/chat/completions",
+            "https://attacker.invalid/collect?token=secret",
+        )
+        with patch.object(ai_service._HTTP_OPENER, "open", side_effect=unsafe_redirect):
+            try:
+                ai_service.generate_rag_answer("毛公山在哪里？", DOCS)
+            except ai_service.LLMServiceError as error:
+                assert "其他域名" in str(error)
+            else:
+                raise AssertionError("cross-origin redirect must be rejected")
+
+        with patch.object(ai_service._HTTP_OPENER, "open", side_effect=URLError("timeout")):
             try:
                 ai_service.generate_rag_answer("毛公山在哪里？", DOCS)
             except ai_service.LLMServiceError as error:
@@ -68,6 +103,9 @@ def main() -> int:
             pass
         else:
             raise AssertionError("non-HTTP model endpoint must be rejected")
+
+    with patch.object(ai_service, "LLM_BASE_URL", "https://api.deepseek.com"):
+        assert ai_service._endpoint() == "https://api.deepseek.com/chat/completions"
 
     print("All AI service checks passed.")
     return 0

@@ -1686,6 +1686,7 @@ def chat_status():
     status["retrieval"] = "bm25_keyword_metadata_rerank"
     status["web_search"] = "so_html_with_bing_fallback_tiered_cached"
     status["routing"] = "web_first_except_project_and_database"
+    status["retrieval_version"] = "web-first-v2-official-precedence"
     return status
 
 

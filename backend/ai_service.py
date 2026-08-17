@@ -96,7 +96,12 @@ def _safe_location(value: str) -> str:
 
 def _origin(value: str) -> tuple[str, str, int | None]:
     parsed = urlparse(value)
-    return parsed.scheme.lower(), (parsed.hostname or "").lower(), parsed.port
+    scheme = parsed.scheme.lower()
+    host = (parsed.hostname or "").rstrip(".").encode("idna").decode("ascii").lower()
+    port = parsed.port
+    if port is None:
+        port = 443 if scheme == "https" else 80 if scheme == "http" else None
+    return scheme, host, port
 
 
 def _redirect_target(current_url: str, location: str) -> str:
@@ -106,7 +111,8 @@ def _redirect_target(current_url: str, location: str) -> str:
         raise LLMServiceError("模型服务返回了不安全的重定向地址")
     if _origin(target) != _origin(current_url):
         raise LLMServiceError(
-            f"模型服务尝试重定向到其他域名 {_safe_location(target)}，已阻止凭据转发"
+            f"模型服务尝试从 {_safe_location(current_url)} 重定向到其他域名 "
+            f"{_safe_location(target)}，已阻止凭据转发"
         )
     if urlparse(current_url).scheme == "https" and parsed.scheme != "https":
         raise LLMServiceError("模型服务尝试降低 HTTPS 安全级别")

@@ -44,6 +44,9 @@ def redirect_error(url: str, location: str, status: int = 307) -> HTTPError:
 def main() -> int:
     context = ai_service.build_context(DOCS)
     assert "毛公山资料" in context and "核验状态：已核验" in context
+    assert ai_service._origin("https://API.DeepSeek.com/chat/completions") == ai_service._origin(
+        "https://api.deepseek.com:443/chat/completions"
+    )
 
     configured = {
         "LLM_PROVIDER": "compatible",

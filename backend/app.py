@@ -67,11 +67,11 @@ except ImportError:
     from ai_service import LLMServiceError, generate_rag_answer, llm_status
 
 try:
-    from .retrieval_service import backfill_knowledge_metadata, hybrid_search, is_realtime_question
-    from .web_search import search_web
+    from .retrieval_service import backfill_knowledge_metadata, classify_question, hybrid_search
+    from .web_search import search_web_with_meta
 except ImportError:
-    from retrieval_service import backfill_knowledge_metadata, hybrid_search, is_realtime_question
-    from web_search import search_web
+    from retrieval_service import backfill_knowledge_metadata, classify_question, hybrid_search
+    from web_search import search_web_with_meta
 
 try:
     from .sync_practice_writings import sync_practice_writings
@@ -1597,7 +1597,7 @@ def source_payload(docs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return stable, de-duplicated citations separately from generated prose."""
     sources: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
-    for doc in docs[:6]:
+    for doc in docs[:5]:
         title = str(doc.get("title") or "资源库资料")
         url = str(doc.get("source_url") or "")
         if not url:
@@ -1684,7 +1684,8 @@ def chat_status():
     status["fallback_available"] = True
     status["personas"] = ["assistant", "guide"]
     status["retrieval"] = "bm25_keyword_metadata_rerank"
-    status["web_search"] = "bing_rss_trusted_sources"
+    status["web_search"] = "so_html_with_bing_fallback_tiered_cached"
+    status["routing"] = "web_first_except_project_and_database"
     return status
 
 
@@ -1696,20 +1697,35 @@ def chat(payload: ChatIn):
         raise HTTPException(status_code=400, detail="问题不能为空")
     with get_conn() as conn:
         history = [turn.model_dump() for turn in payload.history]
-        docs, retrieval_quality, _ = hybrid_search(conn, question, history, 6)
+        intent = classify_question(question)
+        rag_first = intent in {"project_info", "university_practice", "database_query"}
+        search_strategy = "rag_first" if rag_first else "web_required" if intent == "realtime" else "web_first"
+        should_search_web = payload.web_search is True or (payload.web_search is not False and not rag_first)
+        web_search_used = should_search_web
+        web_cache_hit = False
+        web_docs: list[dict[str, Any]] = []
+        if should_search_web:
+            web_docs, web_cache_hit = search_web_with_meta(question, 5)
+        web_search_results = len(web_docs)
+
+        rag_docs: list[dict[str, Any]] = []
+        rag_quality = "none"
+        # Web is primary. RAG supplies project-owned facts or fills a thin/failed public search.
+        should_search_rag = rag_first or len(web_docs) < 3
+        if should_search_rag:
+            rag_docs, rag_quality, _ = hybrid_search(conn, question, history, 6)
         school_terms = ["软件学院", "山东大学", "谁开发", "为什么做", "技术路线", "系统架构", "山软青年"]
         if any(term in question for term in school_terms):
-            docs = (school_knowledge_docs() + docs)[:5]
+            rag_docs = (school_knowledge_docs() + rag_docs)[:6]
+            rag_quality = "high"
+        rag_used = bool(rag_docs)
+        docs = (web_docs + rag_docs)[:7]
+        if len(web_docs) >= 2:
             retrieval_quality = "high"
-        should_search_web = payload.web_search is True or (payload.web_search is not False and is_realtime_question(question))
-        web_search_used = should_search_web
-        web_search_results = 0
-        if should_search_web:
-            web_docs = search_web(question)
-            web_search_results = len(web_docs)
-            if web_docs:
-                docs = (web_docs + docs)[:7]
-                retrieval_quality = "high" if len(web_docs) >= 2 else "partial"
+        elif rag_quality != "none":
+            retrieval_quality = rag_quality
+        else:
+            retrieval_quality = "none"
         sources = source_payload(docs)
         mode = "local_retrieval"
         degraded = False
@@ -1723,8 +1739,10 @@ def chat(payload: ChatIn):
                 persona=payload.persona,
                 retrieval_quality=retrieval_quality,
                 web_search_used=web_search_used,
+                intent=intent,
+                search_strategy=search_strategy,
             )
-            mode = "rag_llm"
+            mode = "web_rag_llm" if web_docs and rag_docs else "web_llm" if web_docs else "rag_llm" if rag_docs else "llm"
         except LLMServiceError as error:
             answer = local_retrieval_answer(docs)
             degraded = llm_status()["configured"]
@@ -1737,8 +1755,9 @@ def chat(payload: ChatIn):
     status = llm_status()
     latency_ms = round((time.monotonic() - started_at) * 1000)
     logger.info(
-        "AI request completed persona=%s mode=%s provider=%s model=%s rag_used=%s web_search_used=%s degraded=%s retrieved_docs=%s latency_ms=%s",
-        payload.persona, mode, status["provider"], status["model"], bool(docs), web_search_used, degraded, len(docs), latency_ms,
+        "AI request completed query=%s intent=%s persona=%s mode=%s provider=%s model=%s web_search_used=%s web_results_count=%s web_sources_used=%s web_cache_hit=%s rag_used=%s rag_docs_count=%s degraded=%s latency_ms=%s",
+        question[:120].replace("\n", " "), intent, payload.persona, mode, status["provider"], status["model"],
+        web_search_used, web_search_results, len(web_docs), web_cache_hit, rag_used, len(rag_docs), degraded, latency_ms,
     )
     return {
         "answer": answer,
@@ -1751,9 +1770,14 @@ def chat(payload: ChatIn):
         "persona": payload.persona,
         "provider": status["provider"],
         "model": status["model"],
-        "rag_used": bool(docs),
+        "intent": intent,
+        "search_strategy": search_strategy,
+        "rag_used": rag_used,
+        "rag_docs_count": len(rag_docs),
         "web_search_used": web_search_used,
         "web_search_results": web_search_results,
+        "web_sources_used": len(web_docs),
+        "web_cache_hit": web_cache_hit,
         "retrieval_quality": retrieval_quality,
         "retrieved_docs": len(docs),
         "latency_ms": latency_ms,

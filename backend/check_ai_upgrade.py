@@ -8,7 +8,7 @@ import time
 
 from backend.ai_service import generate_rag_answer, llm_status
 from backend.config import DB_PATH
-from backend.retrieval_service import backfill_knowledge_metadata, hybrid_search
+from backend.retrieval_service import backfill_knowledge_metadata, classify_question, hybrid_search
 
 QUESTIONS = [
     "介绍一下毛公山",
@@ -23,6 +23,20 @@ QUESTIONS = [
     "软件学院为什么做这个项目？",
     "山东大学学生为什么适合在毛公山开展社会实践？",
 ]
+WEB_FIRST_EXPECTATIONS = {
+    "介绍一下毛公山": "scenic_guide",
+    "介绍一下毛公山的历史文化": "history",
+    "毛公山为什么叫毛公山？": "history",
+    "毛公山在哪里？": "scenic_guide",
+    "毛公山有什么红色故事？": "history",
+    "毛公山有什么值得看的？": "travel",
+    "怎么游览毛公山？": "travel",
+}
+RAG_FIRST_EXPECTATIONS = {
+    "这个项目是谁开发的？": "project_info",
+    "软件学院为什么做这个项目？": "university_practice",
+    "山东大学学生为什么适合在毛公山开展社会实践？": "university_practice",
+}
 FOLLOW_UPS = ["介绍一下毛公山", "它为什么叫这个名字？", "最值得看的是什么？", "那如果第一次去应该怎么逛？"]
 UNRELATED = ("青岛地铁", "烟台山", "潍坊地图", "梅园新村")
 
@@ -32,6 +46,13 @@ def main() -> None:
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--live-limit", type=int, default=2)
     args = parser.parse_args()
+    for question, expected in WEB_FIRST_EXPECTATIONS.items():
+        assert classify_question(question) == expected, (question, classify_question(question))
+    for question, expected in RAG_FIRST_EXPECTATIONS.items():
+        assert classify_question(question) == expected, (question, classify_question(question))
+    assert classify_question("毛公山最近有什么活动？") == "realtime"
+    assert classify_question("毛公山现在开放吗？") == "realtime"
+    print("PASS web-first / RAG-first intent routing")
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         backfill_knowledge_metadata(conn)

@@ -149,6 +149,25 @@ def is_realtime_question(question: str) -> bool:
     return any(term in question for term in REALTIME_TERMS)
 
 
+def classify_question(question: str) -> str:
+    """Route knowledge sources before retrieval; project-owned facts stay RAG-first."""
+    if any(term in question for term in ("资料库里", "数据库", "你们收录", "平台有哪些功能", "根据你们", "平台资料")):
+        return "database_query"
+    if any(term in question for term in PROJECT_TERMS):
+        return "university_practice" if any(term in question for term in ("软件学院", "山东大学", "学生", "社会实践")) else "project_info"
+    if is_realtime_question(question):
+        return "realtime"
+    if any(term in question for term in ("游览", "怎么逛", "值得看", "路线", "景点", "旅游")):
+        return "travel"
+    if any(term in question for term in ("历史", "由来", "得名", "为什么叫", "红色故事")):
+        return "history"
+    if "文化" in question or "红色" in question:
+        return "culture"
+    if any(term in question for term in MAOGONGSHAN_TERMS):
+        return "scenic_guide"
+    return "public_knowledge"
+
+
 def contextualize_question(question: str, history: list[dict[str, str]] | None) -> str:
     """Resolve short Chinese follow-ups for retrieval without rewriting the user message."""
     if any(term in question for term in MAOGONGSHAN_TERMS + PROJECT_TERMS + PARTY_TERMS):

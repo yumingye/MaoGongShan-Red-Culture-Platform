@@ -123,7 +123,7 @@ def main() -> int:
     qa_questions = ["毛公三有啥特色", "毛公山怎么走", "长征精神是什么", "第一次去怎么游览毛公山"]
     for question in qa_questions:
         def qa_check(question=question):
-            payload, _ = expect("/api/chat", method="POST", body={"question": question})
+            payload, _ = expect("/api/chat", method="POST", body={"question": question, "web_search": False})
             if len(payload.get("answer", "")) < 40 or not payload.get("sources"):
                 raise AssertionError("answer or sources are incomplete")
         check(f"chat {question}", qa_check)
@@ -141,7 +141,7 @@ def main() -> int:
                 ],
             },
         )
-        expected = {"answer", "sources", "mode", "degraded", "notice", "provider_error", "follow_up_suggestions", "persona", "rag_used", "web_search_used", "web_search_results", "retrieval_quality", "latency_ms"}
+        expected = {"answer", "sources", "mode", "degraded", "notice", "provider_error", "follow_up_suggestions", "persona", "intent", "search_strategy", "rag_used", "rag_docs_count", "web_search_used", "web_search_results", "web_sources_used", "web_cache_hit", "retrieval_quality", "latency_ms"}
         if not expected.issubset(payload):
             raise AssertionError(f"missing chat response fields: {sorted(expected - set(payload))}")
         if payload.get("persona") != "guide":
@@ -149,7 +149,7 @@ def main() -> int:
     check("chat multi-turn response contract", chat_history_check)
 
     def unknown_qa_check():
-        payload, _ = expect("/api/chat", method="POST", body={"question": "月球实时天气和火星公交班次"})
+        payload, _ = expect("/api/chat", method="POST", body={"question": "月球实时天气和火星公交班次", "web_search": False})
         if payload.get("sources"):
             raise AssertionError("unknown real-time question should not invent sources")
         if len(payload.get("answer", "")) < 20:

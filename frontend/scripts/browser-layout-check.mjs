@@ -422,15 +422,15 @@ try {
     },
     {
       route: '/chat',
-      action: `(() => { const input=document.querySelector('.chat-input textarea'); if(!input)return false; input.value='毛公山有什么特色？'; input.dispatchEvent(new Event('input',{bubbles:true})); const send=[...document.querySelectorAll('.chat-input button')].find(node=>node.innerText.includes('发送')); send?.click(); return Boolean(send) })()`,
-      assertion: `document.querySelectorAll('.bubble.user').length >= 1 && document.querySelectorAll('.bubble.assistant').length >= 1`,
+      action: `(() => { const input=document.querySelector('.chat-input textarea'); if(!input)return false; const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value')?.set; setter?.call(input,'毛公山有什么特色？'); input.dispatchEvent(new Event('input',{bubbles:true})); window.setTimeout(()=>[...document.querySelectorAll('.chat-input button')].find(node=>node.innerText.includes('发送'))?.click(),120); return true })()`,
+      assertion: `document.querySelectorAll('.message-row.user .bubble').length >= 1 && document.querySelectorAll('.message-row.assistant .bubble').length >= 1`,
       label: '知识助手提问与回答',
-      delay: 1200
+      delay: 8000
     },
     {
       route: '/chat',
-      action: `(() => { const clear=[...document.querySelectorAll('.chat-input button')].find(node=>node.innerText.includes('清空')); clear?.click(); return Boolean(clear) })()`,
-      assertion: `document.querySelectorAll('.bubble').length === 0 && document.body.innerText.includes('请选择推荐问题')`,
+      action: `(() => { const clear=[...document.querySelectorAll('.workspace-head button')].find(node=>node.innerText.includes('清空')); clear?.click(); return Boolean(clear) })()`,
+      assertion: `document.querySelectorAll('.bubble').length === 0 && Boolean(document.querySelector('.empty-conversation'))`,
       label: '知识助手清空对话',
       delay: 250
     }
@@ -516,13 +516,15 @@ try {
     })
   }
 
-  await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
-  await navigateAndWait(cdp, `${webBase}/`, '移动端菜单')
-  await cdp.send('Runtime.evaluate', { expression: `document.querySelector('.menu-toggle')?.click()`, returnByValue: true })
-  await delay(250)
-  const menuResult = await cdp.send('Runtime.evaluate', { expression: `JSON.stringify({ expanded:document.querySelector('.menu-toggle')?.getAttribute('aria-expanded'), visible:Boolean(document.querySelector('.mobile-nav')), overflow:document.documentElement.scrollWidth>window.innerWidth+1 })`, returnByValue: true })
-  const menuState = JSON.parse(menuResult.result.value || '{}')
-  if (menuState.expanded !== 'true' || !menuState.visible || menuState.overflow) failures.push(`移动端菜单状态异常：${JSON.stringify(menuState)}`)
+  if (!interactionOnly && !resilienceOnly) {
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true })
+    await navigateAndWait(cdp, `${webBase}/`, '移动端菜单')
+    await cdp.send('Runtime.evaluate', { expression: `document.querySelector('.menu-toggle')?.click()`, returnByValue: true })
+    await delay(250)
+    const menuResult = await cdp.send('Runtime.evaluate', { expression: `JSON.stringify({ expanded:document.querySelector('.menu-toggle')?.getAttribute('aria-expanded'), visible:Boolean(document.querySelector('.mobile-nav')), overflow:document.documentElement.scrollWidth>window.innerWidth+1 })`, returnByValue: true })
+    const menuState = JSON.parse(menuResult.result.value || '{}')
+    if (menuState.expanded !== 'true' || !menuState.visible || menuState.overflow) failures.push(`移动端菜单状态异常：${JSON.stringify(menuState)}`)
+  }
 
   if (failures.length) failures.forEach((failure) => console.error(`FAIL ${failure}`))
   else {

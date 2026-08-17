@@ -1669,6 +1669,7 @@ def chat(payload: ChatIn):
         mode = "local_retrieval"
         degraded = False
         notice = ""
+        provider_error = ""
         history = [turn.model_dump() for turn in payload.history]
         try:
             answer = generate_rag_answer(question, docs, history)
@@ -1677,6 +1678,7 @@ def chat(payload: ChatIn):
             answer = local_retrieval_answer(docs)
             degraded = llm_status()["configured"]
             if degraded:
+                provider_error = str(error)
                 notice = "大模型服务暂时不可用，已自动切换为本地知识库回答。"
                 logger.warning("RAG generation degraded to local retrieval: %s", error)
         if not READ_ONLY_MODE:
@@ -1687,6 +1689,7 @@ def chat(payload: ChatIn):
         "mode": mode,
         "degraded": degraded,
         "notice": notice,
+        "provider_error": provider_error,
         "follow_up_suggestions": follow_up_suggestions(question, docs),
     }
 

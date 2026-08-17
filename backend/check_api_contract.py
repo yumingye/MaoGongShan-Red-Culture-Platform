@@ -140,7 +140,7 @@ def main() -> int:
                 ],
             },
         )
-        expected = {"answer", "sources", "mode", "degraded", "notice", "follow_up_suggestions"}
+        expected = {"answer", "sources", "mode", "degraded", "notice", "provider_error", "follow_up_suggestions"}
         if not expected.issubset(payload):
             raise AssertionError(f"missing chat response fields: {sorted(expected - set(payload))}")
     check("chat multi-turn response contract", chat_history_check)

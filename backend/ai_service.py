@@ -105,7 +105,9 @@ def _redirect_target(current_url: str, location: str) -> str:
     if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.username or parsed.password:
         raise LLMServiceError("模型服务返回了不安全的重定向地址")
     if _origin(target) != _origin(current_url):
-        raise LLMServiceError("模型服务尝试重定向到其他域名，已阻止凭据转发")
+        raise LLMServiceError(
+            f"模型服务尝试重定向到其他域名 {_safe_location(target)}，已阻止凭据转发"
+        )
     if urlparse(current_url).scheme == "https" and parsed.scheme != "https":
         raise LLMServiceError("模型服务尝试降低 HTTPS 安全级别")
     return target

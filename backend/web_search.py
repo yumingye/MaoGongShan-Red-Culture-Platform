@@ -325,7 +325,9 @@ def search_web_with_meta(question: str, limit: int = 5, timeout: float | None = 
         documents.append(document)
     documents.sort(key=lambda row: (row["source_tier"], -row["retrieval_score"]))
     reliable_documents = [row for row in documents if row["source_tier"] <= 3]
-    if len(reliable_documents) >= 2:
+    if any(term in question for term in MAO_TERMS):
+        documents = reliable_documents
+    elif len(reliable_documents) >= 2:
         documents = reliable_documents
     if len(documents) > 2:
         best_score = max(float(row["retrieval_score"]) for row in documents)

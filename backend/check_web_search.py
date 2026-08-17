@@ -30,6 +30,7 @@ def main() -> None:
         "source_url": "https://www.qingdao.gov.cn/2022/example.shtml",
     }
     assert web_search._relevance("毛公山最近有什么活动？", stale) < 45
+    assert web_search._extract_year({"source_url": "https://example.gov.cn/202503/t20250314_1.shtml"}) == 2025
     print("All trusted web-search checks passed.")
 
 

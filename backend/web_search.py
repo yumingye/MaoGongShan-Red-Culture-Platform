@@ -210,7 +210,7 @@ def _relevance(question: str, row: dict[str, str]) -> float:
 
 
 def _extract_year(row: dict[str, str]) -> int | None:
-    match = re.search(r"(?<!\d)(20\d{2})(?!\d)", f"{row.get('title', '')} {row.get('summary', '')} {row.get('source_url', '')}")
+    match = re.search(r"(?<!\d)(20\d{2})", f"{row.get('title', '')} {row.get('summary', '')} {row.get('source_url', '')}")
     return int(match.group(1)) if match else None
 
 
@@ -277,6 +277,9 @@ def search_web_with_meta(question: str, limit: int = 5, timeout: float | None = 
             continue
         documents.append(document)
     documents.sort(key=lambda row: (row["source_tier"], -row["retrieval_score"]))
+    reliable_documents = [row for row in documents if row["source_tier"] <= 3]
+    if len(reliable_documents) >= 2:
+        documents = reliable_documents
     selected = documents[: max(2, min(limit, 5))]
     _cache_put(cache_key, _cache_ttl(question), selected)
     return selected, False

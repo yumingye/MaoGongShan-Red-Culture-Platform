@@ -108,7 +108,9 @@ def main() -> int:
         else:
             raise AssertionError("non-HTTP model endpoint must be rejected")
 
-    with patch.object(ai_service, "LLM_BASE_URL", "https://api.deepseek.com"):
+    with patch.multiple(ai_service, LLM_PROVIDER="deepseek", LLM_BASE_URL="https://api.deepseek.com"):
+        assert ai_service._endpoint() == "https://api.deepseek.com/chat/completions"
+    with patch.multiple(ai_service, LLM_PROVIDER="deepseek", LLM_BASE_URL="http://api.deepseek.com"):
         assert ai_service._endpoint() == "https://api.deepseek.com/chat/completions"
 
     print("All AI service checks passed.")

@@ -77,6 +77,15 @@ def _endpoint() -> str:
     parsed = urlparse(LLM_BASE_URL)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.username or parsed.password:
         raise LLMServiceError("LLM_BASE_URL 必须是有效的 HTTP(S) 地址")
+    if parsed.query or parsed.fragment:
+        raise LLMServiceError("LLM_BASE_URL 不能包含查询参数或片段")
+    provider = LLM_PROVIDER.strip().lower()
+    host = (parsed.hostname or "").rstrip(".").lower()
+    if provider == "deepseek" and host == "api.deepseek.com":
+        # DeepSeek's official endpoint is HTTPS. Canonicalizing it here also
+        # protects deployments where a platform-level value was saved as HTTP,
+        # which otherwise incurs a 307 POST redirect before every request.
+        return "https://api.deepseek.com/chat/completions"
     if LLM_BASE_URL.endswith("/chat/completions"):
         return LLM_BASE_URL
     return f"{LLM_BASE_URL}/chat/completions"

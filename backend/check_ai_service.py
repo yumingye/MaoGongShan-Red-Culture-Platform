@@ -59,6 +59,7 @@ def main() -> int:
         assert ai_service._endpoint() == "https://example.invalid/v1/chat/completions"
         with patch.object(ai_service._HTTP_OPENER, "open", return_value=FakeResponse({"choices": [{"message": {"content": "可说明的部分会继续回答。"}}]})) as mocked_empty:
             assert ai_service.generate_rag_answer("未知问题", [], persona="guide", retrieval_quality="none") == "可说明的部分会继续回答。"
+            assert mocked_empty.call_count == 2
             empty_body = json.loads(mocked_empty.call_args.args[0].data.decode("utf-8"))
             assert "未检索到可用" in empty_body["messages"][-1]["content"]
             assert "数字讲解员" in empty_body["messages"][0]["content"]

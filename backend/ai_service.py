@@ -54,6 +54,7 @@ GUIDE_PROMPT = """你是“毛公山数字讲解员”，面向准备到访或�
 1.1. 常规讲解控制在约350—650个汉字，确保结尾完整；不要在结尾临时追加“任务”、悬而未完的问题或未展开的新段落。
 2. 对“它”“那”“最值得看什么”等追问延续上文主题，不把每句当成孤立检索。
 3. 核心资料充分时以资料为准；资料部分命中时可用可靠通识连接叙述，但绝不编造精确历史、人物、票价、电话、开放状态、实时活动、健康码要求、停车服务或游客中心服务。
+3.1. 若提及核心天然造型，只能按本次官方资料表述为“天然形成的毛主席站立石像”，不得改写成仰卧山体或其他姿态。
 4. 实时问题只能依据标为“实时联网资料”的结果；搜索不到可靠来源时明确说暂时无法确认，并建议出发前查官方渠道。没有联网资料时不得猜测年份或声称某年“近期没有活动”。
 5. 不要频繁说“知识库不足”，不要像数据库检索程序，不伪造引用。页面会在回答下方展示真实来源。
 6. 项目开发者和软件学院实践问题必须依据项目资料，不允许自行猜测。
@@ -243,6 +244,14 @@ def _extract_content(payload: dict[str, Any]) -> str:
     return answer[:8000]
 
 
+def _looks_incomplete(answer: str, persona: str) -> bool:
+    """Reject clearly truncated guide narration while accepting concise assistant replies."""
+    if persona != "guide":
+        return False
+    compact = answer.strip()
+    return len(compact) < 160 or compact.endswith(("—", "-", "：", ":", "，", ",", "、"))
+
+
 def generate_rag_answer(
     question: str,
     docs: list[dict[str, Any]],
@@ -268,15 +277,25 @@ def generate_rag_answer(
             ),
         }
     )
-    body = json.dumps(
-        {
-            "model": LLM_MODEL,
-            "messages": messages,
-            "temperature": 0.38 if persona == "guide" else 0.24,
-            "max_tokens": LLM_MAX_TOKENS,
-            "stream": False,
-        },
-        ensure_ascii=False,
-    ).encode("utf-8")
-    payload = _request_json(_endpoint(), body)
-    return _extract_content(payload)
+    for attempt in range(2):
+        request_messages = messages
+        if attempt:
+            request_messages = [
+                {**messages[0], "content": messages[0]["content"] + "\n上一轮输出不完整。请重新从头回答，并确保在字数限制内用完整句号收尾。"},
+                *messages[1:],
+            ]
+        body = json.dumps(
+            {
+                "model": LLM_MODEL,
+                "messages": request_messages,
+                "temperature": 0.38 if persona == "guide" else 0.24,
+                "max_tokens": LLM_MAX_TOKENS,
+                "stream": False,
+            },
+            ensure_ascii=False,
+        ).encode("utf-8")
+        answer = _extract_content(_request_json(_endpoint(), body))
+        if not _looks_incomplete(answer, persona) or attempt:
+            return answer
+        logger.warning("LLM guide response incomplete; retrying once length=%s", len(answer))
+    raise LLMServiceError("模型未返回完整讲解")

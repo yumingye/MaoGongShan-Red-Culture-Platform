@@ -24,11 +24,11 @@ services:
       - key: FRONTEND_HOST
         value: maogongshan-red-culture-web-yumingye.onrender.com
       - key: LLM_TIMEOUT_SECONDS
-        value: "18"
+        value: "30"
       - key: LLM_MAX_CONTEXT_CHARS
         value: "12000"
       - key: LLM_MAX_TOKENS
-        value: "900"
+        value: "1200"
       - key: WEB_SEARCH_PROVIDER
         value: bing-rss
       - key: WEB_SEARCH_TIMEOUT_SECONDS

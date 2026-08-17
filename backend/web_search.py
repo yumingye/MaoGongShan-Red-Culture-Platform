@@ -51,6 +51,13 @@ def _strip_markup(value: str) -> str:
     return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", value)).split())
 
 
+def _sanitize_summary(value: str) -> str:
+    """Remove unverifiable folklore fragments before they reach generation or fallback."""
+    banned = ("神龙盘踞", "龙气汇聚", "仙气", "帝王将相", "鸿鹄展翅", "风水宝地")
+    parts = re.split(r"(?<=[。！？；;])", value)
+    return "".join(part for part in parts if not any(term in part for term in banned)).strip()
+
+
 def _query_terms(question: str) -> list[str]:
     terms = ["毛公山"] if any(term in question for term in MAO_TERMS) else []
     for values in INTENT_TERMS.values():
@@ -267,11 +274,12 @@ def _to_document(question: str, row: dict[str, str]) -> dict[str, Any]:
     url = row["source_url"]
     tier = _source_tier(url)
     score = _relevance(question, row)
-    text = f"{row['title']} {row['summary']}"
+    summary = _sanitize_summary(row["summary"])
+    text = f"{row['title']} {summary}"
     return {
         "title": row["title"][:240] or "联网检索资料",
-        "summary": row["summary"][:1600],
-        "content": row["summary"][:2000],
+        "summary": summary[:1600],
+        "content": summary[:2000],
         "category": "实时联网资料" if any(term in question for term in INTENT_TERMS["realtime"]) else "联网公开资料",
         "source_name": urlparse(url).hostname or "公开网页",
         "source_url": url,

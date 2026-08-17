@@ -31,6 +31,7 @@ def main() -> None:
     }
     assert web_search._relevance("毛公山最近有什么活动？", stale) < 45
     assert web_search._extract_year({"source_url": "https://example.gov.cn/202503/t20250314_1.shtml"}) == 2025
+    assert "帝王将相" not in web_search._sanitize_summary("景区环境优美。传说帝王将相常来，龙气汇聚。适合登山。")
     print("All trusted web-search checks passed.")
 
 

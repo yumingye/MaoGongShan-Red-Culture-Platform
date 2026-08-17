@@ -107,6 +107,11 @@ def main() -> int:
             else:
                 raise AssertionError("provider failure must be converted to LLMServiceError")
 
+        transient_success = FakeResponse({"choices": [{"message": {"content": "瞬时失败重试后回答成功。"}}]})
+        with patch.object(ai_service._HTTP_OPENER, "open", side_effect=[URLError("timeout"), transient_success]) as mocked_retry:
+            assert ai_service.generate_rag_answer("毛公山在哪里？", DOCS) == "瞬时失败重试后回答成功。"
+            assert mocked_retry.call_count == 2
+
     with patch.object(ai_service, "LLM_BASE_URL", "file:///unsafe"):
         try:
             ai_service._endpoint()

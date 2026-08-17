@@ -185,6 +185,19 @@ def _request_json(endpoint: str, body: bytes) -> dict[str, Any]:
     raise LLMServiceError("模型服务重定向次数过多")
 
 
+def _request_json_with_transient_retry(endpoint: str, body: bytes) -> dict[str, Any]:
+    """Retry one safe POST only for transient provider/network failures."""
+    retryable_markers = ("超时或不可用", "HTTP 408", "HTTP 429", "HTTP 500", "HTTP 502", "HTTP 503", "HTTP 504")
+    for attempt in range(2):
+        try:
+            return _request_json(endpoint, body)
+        except LLMServiceError as error:
+            if attempt or not any(marker in str(error) for marker in retryable_markers):
+                raise
+            logger.warning("LLM provider transient failure; retrying once error=%s", str(error))
+    raise LLMServiceError("模型服务连接超时或不可用")
+
+
 def _compact(value: Any, limit: int) -> str:
     text = " ".join(str(value or "").split())
     return text[:limit]
@@ -295,7 +308,7 @@ def generate_rag_answer(
             },
             ensure_ascii=False,
         ).encode("utf-8")
-        answer = _extract_content(_request_json(_endpoint(), body))
+        answer = _extract_content(_request_json_with_transient_retry(_endpoint(), body))
         if not _looks_incomplete(answer, persona) or attempt:
             return answer
         logger.warning("LLM guide response incomplete; retrying once length=%s", len(answer))

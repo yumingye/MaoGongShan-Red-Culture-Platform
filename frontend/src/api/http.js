@@ -1,5 +1,10 @@
 import axios from 'axios'
 
+// AI 请求包含联网检索和模型生成，不能沿用普通接口的 10 秒超时。
+// 资源助手最多等待一次模型重试；讲解员还可能为不完整讲解重试一次。
+export const ASSISTANT_REQUEST_TIMEOUT_MS = 90000
+export const GUIDE_REQUEST_TIMEOUT_MS = 130000
+
 const responseCache = new Map()
 const CACHE_PREFIX = 'mgs-api-cache:'
 const MAX_CACHE_BYTES = 350000

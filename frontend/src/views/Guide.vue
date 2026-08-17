@@ -59,7 +59,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { http } from '../api/http'
+import { GUIDE_REQUEST_TIMEOUT_MS, http } from '../api/http'
 import PageHero from '../components/PageHero.vue'
 import SectionTitle from '../components/SectionTitle.vue'
 import { offlineNarrations } from '../data/offlineFallbacks'
@@ -85,7 +85,7 @@ async function ask() {
   asking.value = true
   statusText.value = '正在检索毛公山资料并组织讲解…'
   try {
-    const res = await http.post('/api/chat', { question: text, history, persona: 'guide' }, { timeout: 30000 })
+    const res = await http.post('/api/chat', { question: text, history, persona: 'guide' }, { timeout: GUIDE_REQUEST_TIMEOUT_MS })
     messages.value.push({
       role: 'assistant',
       content: res.data?.answer || '暂时没有取得有效讲解，请稍后重试。',

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlparse, urlunparse
@@ -79,6 +80,11 @@ class _NoAutomaticRedirect(HTTPRedirectHandler):
 
 _HTTP_OPENER = build_opener(_NoAutomaticRedirect())
 _MAX_REDIRECTS = 3
+_SECRET_PATTERNS = (
+    re.compile(r"(?i)(authorization\s*[:=]\s*bearer\s+)[^\s,;]+"),
+    re.compile(r"(?i)((?:api[_-]?key|token)\s*[:=]\s*)[^\s,;\"']+"),
+    re.compile(r"\bsk-[A-Za-z0-9_-]{8,}\b"),
+)
 
 
 def llm_status() -> dict[str, Any]:
@@ -88,7 +94,7 @@ def llm_status() -> dict[str, Any]:
         "provider": LLM_PROVIDER or "local-retrieval",
         "model": LLM_MODEL if configured else "",
         "mode": "rag_llm" if configured else "local_retrieval",
-        "transport": "urllib-safe-redirect-v1",
+        "transport": "urllib-safe-redirect-error-v2",
     }
 
 
@@ -120,6 +126,27 @@ def _safe_location(value: str) -> str:
         return urlunparse((parsed.scheme, host, parsed.path, "", "", "")) or "(missing)"
     except (TypeError, ValueError):
         return "(invalid)"
+
+
+def _safe_provider_error(error: HTTPError) -> str:
+    """Extract a bounded provider message while redacting credential-shaped data."""
+    try:
+        raw = error.read(4096).decode("utf-8", errors="replace")
+    except (AttributeError, OSError):
+        return "(no response body)"
+    detail = ""
+    try:
+        payload = json.loads(raw)
+        provider_error = payload.get("error", payload) if isinstance(payload, dict) else {}
+        if isinstance(provider_error, dict):
+            safe_fields = [provider_error.get(name) for name in ("type", "code", "message")]
+            detail = " | ".join(str(value) for value in safe_fields if value not in (None, ""))
+    except json.JSONDecodeError:
+        detail = raw
+    detail = " ".join(detail.split())[:1000] or "(empty response body)"
+    for pattern in _SECRET_PATTERNS:
+        detail = pattern.sub(lambda match: f"{match.group(1)}[REDACTED]" if match.lastindex else "[REDACTED]", detail)
+    return detail
 
 
 def _origin(value: str) -> tuple[str, str, int | None]:
@@ -180,8 +207,14 @@ def _request_json(endpoint: str, body: bytes) -> dict[str, Any]:
                     raise LLMServiceError("模型服务重定向次数过多") from error
                 current_url = _redirect_target(current_url, location)
                 continue
-            logger.warning("LLM provider HTTP error: status=%s", error.code)
-            raise LLMServiceError(f"模型服务返回 HTTP {error.code}") from error
+            detail = _safe_provider_error(error)
+            logger.warning(
+                "LLM provider HTTP error: status=%s endpoint=%s detail=%s",
+                error.code,
+                _safe_location(current_url),
+                detail,
+            )
+            raise LLMServiceError(f"模型服务返回 HTTP {error.code}：{detail}") from error
         except (URLError, TimeoutError, OSError) as error:
             logger.warning("LLM provider unavailable: %s", error.__class__.__name__)
             raise LLMServiceError("模型服务连接超时或不可用") from error

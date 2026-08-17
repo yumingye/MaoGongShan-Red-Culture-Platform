@@ -2,7 +2,7 @@
   <div class="ai-page-shell">
     <PageHero
       title="毛公山文化智能助手"
-      subtitle="先检索本地知识库，再由大模型组织自然中文回答；每条事实都以页面下方的资料来源为依据。"
+      subtitle="由 DeepSeek 综合可信联网资料与本地知识库，组织自然中文回答并展示参考来源。"
       image="/assets/images/generated/assistant-knowledge-v2-wide.webp"
       mobile-image="/assets/images/generated/assistant-knowledge-v2-mobile.webp"
       eyebrow="RAG · Local Knowledge · Grounded AI"
@@ -119,7 +119,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { http } from '../api/http'
+import { ASSISTANT_REQUEST_TIMEOUT_MS, http } from '../api/http'
 import PageHero from '../components/PageHero.vue'
 import SafeImage from '../components/SafeImage.vue'
 import { copyText } from '../utils/clipboard'
@@ -158,6 +158,7 @@ function messageId() {
 
 function formatApiError(err) {
   if (err?.code === 'ERR_CANCELED') return '已停止本次生成。'
+  if (err?.code === 'ECONNABORTED') return '回答生成超时，请稍后重试。'
   const detail = err?.response?.data?.detail
   if (Array.isArray(detail)) return detail.map((item) => item.msg).filter(Boolean).join('；') || '输入内容不符合要求。'
   if (typeof detail === 'string') return detail
@@ -208,7 +209,7 @@ async function submit(value, appendUser = true) {
   try {
     const res = await http.post('/api/chat', { question: text, history, persona: 'assistant' }, {
       signal: activeController.signal,
-      timeout: 28000
+      timeout: ASSISTANT_REQUEST_TIMEOUT_MS
     })
     const assistant = {
       id: messageId(),

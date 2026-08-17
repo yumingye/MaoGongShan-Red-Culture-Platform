@@ -41,6 +41,10 @@ def redirect_error(url: str, location: str, status: int = 307) -> HTTPError:
     return HTTPError(url, status, "redirect", headers, BytesIO(b""))
 
 
+def provider_error(url: str, status: int, body: str) -> HTTPError:
+    return HTTPError(url, status, "provider error", Message(), BytesIO(body.encode("utf-8")))
+
+
 def main() -> int:
     context = ai_service.build_context(DOCS)
     assert "毛公山资料" in context and "核验状态：已核验" in context
@@ -57,7 +61,7 @@ def main() -> int:
         "LLM_MODEL": "test-model",
     }
     with patch.multiple(ai_service, **configured):
-        assert ai_service.llm_status()["transport"] == "urllib-safe-redirect-v1"
+        assert ai_service.llm_status()["transport"] == "urllib-safe-redirect-error-v2"
         assert ai_service._endpoint() == "https://example.invalid/v1/chat/completions"
         with patch.object(ai_service._HTTP_OPENER, "open", return_value=FakeResponse({"choices": [{"message": {"content": "可说明的部分会继续回答。"}}]})) as mocked_empty:
             assert ai_service.generate_rag_answer("未知问题", [], persona="guide", retrieval_quality="none") == "可说明的部分会继续回答。"
@@ -106,6 +110,24 @@ def main() -> int:
                 assert "不可用" in str(error) or "超时" in str(error)
             else:
                 raise AssertionError("provider failure must be converted to LLMServiceError")
+
+        secret = "sk-test-secret-that-must-not-appear"
+        bad_request = provider_error(
+            "https://example.invalid/v1/chat/completions",
+            400,
+            '{"error":{"message":"invalid model","api_key":"' + secret + '"}}',
+        )
+        with patch.object(ai_service._HTTP_OPENER, "open", side_effect=bad_request):
+            with patch.object(ai_service.logger, "warning") as warning:
+                try:
+                    ai_service.generate_rag_answer("毛公山在哪里？", DOCS)
+                except ai_service.LLMServiceError as error:
+                    safe_error = str(error)
+                else:
+                    raise AssertionError("provider HTTP failure must be converted to LLMServiceError")
+            log_text = " ".join(map(str, warning.call_args.args))
+            assert "invalid model" in safe_error
+            assert secret not in safe_error and secret not in log_text
 
         transient_success = FakeResponse({"choices": [{"message": {"content": "瞬时失败重试后回答成功。"}}]})
         with patch.object(ai_service._HTTP_OPENER, "open", side_effect=[URLError("timeout"), transient_success]) as mocked_retry:

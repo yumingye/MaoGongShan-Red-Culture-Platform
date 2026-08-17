@@ -145,6 +145,42 @@ def _fetch_html(endpoint: str, headers: dict[str, str], timeout: float) -> bytes
         return response.content[:2_500_000]
 
 
+def _fetch_qingdao_official(question: str, headers: dict[str, str], timeout: float) -> list[dict[str, str]]:
+    """Query Qingdao Government's public unified-search API without credentials."""
+    params = {
+        "code": "0060ed3eefe4449c93734b28fab5622a",
+        "siteId": "5",
+        "searchWord": "毛公山",
+        "pageSize": "20",
+        "pageNumber": "1",
+        "modal": "1,3",
+        "area": "0",
+    }
+    if any(term in question for term in INTENT_TERMS["realtime"]):
+        params["publishTime"] = "DESC"
+    with httpx.Client(follow_redirects=True, timeout=timeout, headers=headers) as client:
+        # The government endpoint currently serves this public JSON API over HTTP.
+        response = client.get(
+            "http://www.qingdao.gov.cn/igs/front/search.jhtml",
+            params=params,
+            headers={"Accept": "application/json"},
+        )
+        response.raise_for_status()
+        payload = response.json()
+    content = payload.get("page", {}).get("content", []) if isinstance(payload, dict) else []
+    rows: list[dict[str, str]] = []
+    for item in content if isinstance(content, list) else []:
+        if not isinstance(item, dict):
+            continue
+        rows.append({
+            "source_url": str(item.get("LinkUrl") or item.get("url") or "").strip(),
+            "title": _strip_markup(str(item.get("title") or "")),
+            "summary": _strip_markup(str(item.get("Content") or "")),
+            "published": str(item.get("publishTime") or item.get("fwTime") or "").strip(),
+        })
+    return rows
+
+
 def _fetch_candidates(question: str, timeout: float) -> tuple[list[dict[str, str]], str]:
     query = quote_plus(rewrite_query(question))
     endpoints = [
@@ -156,6 +192,15 @@ def _fetch_candidates(question: str, timeout: float) -> tuple[list[dict[str, str
         "Accept": "text/html,application/xhtml+xml",
         "Accept-Language": "zh-CN,zh;q=0.9",
     }
+    if any(term in question for term in MAO_TERMS):
+        for attempt in range(2):
+            try:
+                rows = _fetch_qingdao_official(question, headers, timeout)
+                if rows:
+                    return rows, "qingdao-government-search"
+                break
+            except Exception as error:
+                logger.warning("Web search unavailable: provider=qingdao-government-search attempt=%s error=%s", attempt + 1, error.__class__.__name__)
     for endpoint, parser, provider in endpoints:
         for attempt in range(2):
             try:
@@ -189,6 +234,10 @@ def _relevance(question: str, row: dict[str, str]) -> float:
     if not any(term in question for term in INTENT_TERMS["realtime"]):
         if any(term in title for term in ("景区", "文旅", "简介", "旅游", "山头公园", "4A")):
             score += 12.0
+        if any(term in text for term in ("站立石像", "巍然站立", "自然景观", "风景优美", "旅游资源", "国家4A")):
+            score += 24.0
+        if any(term in title for term in ("公安", "支队", "大队", "拉练", "督导", "检查", "妇女节")):
+            score -= 45.0
         if any(term in title for term in ("主题党日", "开展活动")) and not any(term in question for term in ("活动", "红色故事")):
             score -= 16.0
     else:
@@ -210,7 +259,7 @@ def _relevance(question: str, row: dict[str, str]) -> float:
 
 
 def _extract_year(row: dict[str, str]) -> int | None:
-    match = re.search(r"(?<!\d)(20\d{2})", f"{row.get('title', '')} {row.get('summary', '')} {row.get('source_url', '')}")
+    match = re.search(r"(?<!\d)(20\d{2})", f"{row.get('published', '')} {row.get('title', '')} {row.get('summary', '')} {row.get('source_url', '')}")
     return int(match.group(1)) if match else None
 
 
@@ -232,7 +281,7 @@ def _to_document(question: str, row: dict[str, str]) -> dict[str, Any]:
         "source_tier": tier,
         "topic": "maogongshan_web" if "毛公山" in text else "public_web",
         "location": "青岛市城阳区" if "城阳" in text else "",
-        "document_date": str(_extract_year(row) or ""),
+        "document_date": row.get("published", "")[:10] or str(_extract_year(row) or ""),
         "relevance": round(score / 100, 3),
         "tags": "web_search,maogongshan" if "毛公山" in text else "web_search",
         "knowledge_level": 1 if "毛公山" in text else 2,
@@ -252,8 +301,6 @@ def search_web_with_meta(question: str, limit: int = 5, timeout: float | None = 
         return cached[:limit], True
 
     search_questions = [question]
-    if any(term in question for term in MAO_TERMS):
-        search_questions = [f"{question} site:qingdao.gov.cn", question]
     candidates: list[dict[str, str]] = []
     for search_question in search_questions:
         batch, actual_provider = _fetch_candidates(search_question, timeout)
@@ -280,6 +327,11 @@ def search_web_with_meta(question: str, limit: int = 5, timeout: float | None = 
     reliable_documents = [row for row in documents if row["source_tier"] <= 3]
     if len(reliable_documents) >= 2:
         documents = reliable_documents
+    if len(documents) > 2:
+        best_score = max(float(row["retrieval_score"]) for row in documents)
+        focused_documents = [row for row in documents if float(row["retrieval_score"]) >= best_score - 20]
+        if len(focused_documents) >= 2:
+            documents = focused_documents
     selected = documents[: max(2, min(limit, 5))]
     _cache_put(cache_key, _cache_ttl(question), selected)
     return selected, False

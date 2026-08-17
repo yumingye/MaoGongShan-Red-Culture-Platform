@@ -1684,9 +1684,9 @@ def chat_status():
     status["fallback_available"] = True
     status["personas"] = ["assistant", "guide"]
     status["retrieval"] = "bm25_keyword_metadata_rerank"
-    status["web_search"] = "so_html_with_bing_fallback_tiered_cached"
+    status["web_search"] = "qingdao_government_with_so_bing_fallback_tiered_cached"
     status["routing"] = "web_first_except_project_and_database"
-    status["retrieval_version"] = "web-first-v2-official-precedence"
+    status["retrieval_version"] = "web-first-v3-government-search"
     return status
 
 

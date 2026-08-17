@@ -15,7 +15,7 @@ HTML = """<html><body><ol>
 
 def main() -> None:
     web_search._CACHE.clear()
-    with patch.object(web_search, "_fetch_html", return_value=HTML):
+    with patch.object(web_search, "_fetch_qingdao_official", return_value=[]), patch.object(web_search, "_fetch_html", return_value=HTML):
         results, cache_hit = web_search.search_web_with_meta("毛公山最近有什么活动？")
         cached_results, cached_hit = web_search.search_web_with_meta("毛公山最近有什么活动？")
     assert len(results) == 1

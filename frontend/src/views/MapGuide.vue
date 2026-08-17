@@ -109,7 +109,7 @@ const keyword = ref('')
 const mapEl = ref(null)
 const mapMessage = ref('')
 const hasAmapKey = computed(() => Boolean(import.meta.env.VITE_AMAP_KEY))
-const fallbackImage = '/assets/images/fallback/fallback-real-scenery.jpg'
+const fallbackImage = '/assets/images/scenery/maogongshan-mountain.jpg'
 
 const pinPositions = [
   { left: '12%', top: '18%' },

@@ -3,7 +3,8 @@
     <PageHero
       title="实践调研"
       subtitle="展示山软寻脉·毛公山数字调研实践团的路线、方法、日志、成果与青年感悟。"
-      :image="researchPhotos[0]?.detail_url"
+      image="/assets/images/generated/youth-fieldwork-v2-wide.webp"
+      mobile-image="/assets/images/generated/youth-fieldwork-v2-mobile.webp"
       eyebrow="Field Research"
     />
     <main class="page">

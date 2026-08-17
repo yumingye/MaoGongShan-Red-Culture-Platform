@@ -3,7 +3,8 @@
     <PageHero
       title="毛公山数字讲解员"
       subtitle="基于资源库知识库、景点讲解词和语音合成能力，提供可听、可问、可浏览的智能导览。"
-      image="/assets/images/culture/maogongshan-red-park-2022.jpg"
+      image="/assets/images/generated/guide-route-v2-wide.webp"
+      mobile-image="/assets/images/generated/guide-route-v2-mobile.webp"
       eyebrow="AI智能讲解"
     />
     <main class="page">
@@ -29,11 +30,18 @@
           <div class="quick-questions">
             <button v-for="item in quick" :key="item" @click="question = item; ask()">{{ item }}</button>
           </div>
-          <article v-if="answer" class="answer-box">
-            <h3>讲解回答</h3>
-            <p>{{ answer }}</p>
-            <el-button plain @click="speak(answer)">朗读回答</el-button>
-          </article>
+          <div v-if="messages.length" class="guide-conversation" role="log" aria-live="polite">
+            <article v-for="(message, index) in messages" :key="index" class="guide-message" :class="message.role">
+              <strong>{{ message.role === 'user' ? '游客' : '数字讲解员' }}</strong>
+              <p>{{ message.content }}</p>
+              <div v-if="message.sources?.length" class="guide-sources">
+                <span>讲解依据</span>
+                <a v-for="source in message.sources" :key="`${source.title}-${source.source_url}`" :href="source.source_url || '/sources'" :target="source.source_url?.startsWith('http') ? '_blank' : undefined">{{ source.title }}</a>
+              </div>
+              <el-button v-if="message.role === 'assistant'" plain @click="speak(message.content)">朗读这段讲解</el-button>
+            </article>
+          </div>
+          <p v-if="statusText" class="guide-status">{{ statusText }}</p>
         </section>
       </section>
 
@@ -50,28 +58,46 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { http } from '../api/http'
 import PageHero from '../components/PageHero.vue'
 import SectionTitle from '../components/SectionTitle.vue'
 import { offlineNarrations } from '../data/offlineFallbacks'
 
 const question = ref('')
-const answer = ref('')
 const asking = ref(false)
+const messages = ref([])
+const statusText = ref('')
 const narrations = ref(offlineNarrations)
 const quick = ['介绍一下毛公山', '毛公山有什么红色故事', '怎么游览毛公山', '这个项目是谁开发的', '软件学院为什么做这个项目']
-const currentScript = computed(() => narrations.value[0]?.script || '欢迎来到青岛城阳毛公山红色文化数字资源库。')
+const currentScript = computed(() => [...messages.value].reverse().find((item) => item.role === 'assistant')?.content || narrations.value[0]?.script || '欢迎来到青岛城阳毛公山红色文化数字资源库。')
+
+function historyPayload() {
+  return messages.value.slice(-10).map(({ role, content }) => ({ role, content: content.slice(0, 2000) }))
+}
 
 async function ask() {
   const text = question.value.trim()
-  if (!text) return
+  if (!text || asking.value) return
+  const history = historyPayload()
+  messages.value.push({ role: 'user', content: text })
+  question.value = ''
   asking.value = true
+  statusText.value = '正在检索毛公山资料并组织讲解…'
   try {
-    const res = await http.post('/api/chat', { question: text })
-    answer.value = res.data?.answer || '当前没有取得有效回答，请从推荐问题或资料来源页面继续浏览。'
+    const res = await http.post('/api/chat', { question: text, history, persona: 'guide' }, { timeout: 30000 })
+    messages.value.push({
+      role: 'assistant',
+      content: res.data?.answer || '暂时没有取得有效讲解，请稍后重试。',
+      sources: res.data?.sources || [],
+      mode: res.data?.mode,
+    })
+    statusText.value = res.data?.degraded
+      ? '模型服务暂时降级，当前内容来自本地知识库。'
+      : `${res.data?.model || 'DeepSeek'} · ${res.data?.web_search_used ? '已联网核验' : '本地知识增强'} · ${res.data?.latency_ms || 0} ms`
   } catch {
-    answer.value = '问答服务暂时无法连接。你仍可通过顶部搜索、全景图库、红色历史和资料来源页面浏览本地内容。'
+    messages.value.push({ role: 'assistant', content: '问答服务暂时无法连接。你仍可播放下方已有讲解，或稍后重试。', sources: [] })
+    statusText.value = '讲解服务连接失败'
   } finally {
     asking.value = false
   }
@@ -103,6 +129,8 @@ onMounted(async () => {
     narrations.value = offlineNarrations
   }
 })
+
+onBeforeUnmount(stopSpeak)
 </script>
 
 <style scoped>
@@ -173,6 +201,34 @@ onMounted(async () => {
   border-radius: 12px;
   line-height: 1.9;
 }
+
+.guide-conversation {
+  display: grid;
+  gap: 14px;
+  max-height: 560px;
+  padding-right: 4px;
+  overflow: auto;
+}
+
+.guide-message {
+  max-width: 88%;
+  padding: 16px 18px;
+  background: rgba(255, 250, 240, .88);
+  border: 1px solid var(--line);
+  border-radius: 16px 16px 16px 4px;
+}
+
+.guide-message.user {
+  justify-self: end;
+  color: #fff8e6;
+  background: linear-gradient(135deg, #541015, #8f1d22);
+  border-radius: 16px 16px 4px;
+}
+
+.guide-message p { margin: 8px 0 12px; white-space: pre-wrap; line-height: 1.9; }
+.guide-sources { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; font-size: 12px; }
+.guide-sources a { padding: 4px 8px; color: var(--red-dark); background: #fff; border: 1px solid var(--line); border-radius: 999px; }
+.guide-status { color: var(--muted); font-size: 13px; }
 
 .narration-card {
   background:

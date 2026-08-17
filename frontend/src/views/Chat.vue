@@ -3,7 +3,8 @@
     <PageHero
       title="毛公山文化智能助手"
       subtitle="先检索本地知识库，再由大模型组织自然中文回答；每条事实都以页面下方的资料来源为依据。"
-      image="/assets/images/banners/peak-red-flags-hero.webp"
+      image="/assets/images/generated/assistant-knowledge-v2-wide.webp"
+      mobile-image="/assets/images/generated/assistant-knowledge-v2-mobile.webp"
       eyebrow="RAG · Local Knowledge · Grounded AI"
     />
     <main class="page chat-page">
@@ -205,7 +206,7 @@ async function submit(value, appendUser = true) {
   followUps.value = []
   activeController = new AbortController()
   try {
-    const res = await http.post('/api/chat', { question: text, history }, {
+    const res = await http.post('/api/chat', { question: text, history, persona: 'assistant' }, {
       signal: activeController.signal,
       timeout: 28000
     })

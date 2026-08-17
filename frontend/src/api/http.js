@@ -93,7 +93,7 @@ http.interceptors.response.use(
   }
 )
 
-export const FALLBACK_IMAGE = '/assets/images/fallback/fallback-real-scenery.jpg'
+export const FALLBACK_IMAGE = '/assets/images/scenery/maogongshan-mountain.jpg'
 export const FALLBACK_IMAGES = Object.freeze({
   scenery: '/assets/images/scenery/summit-terrace-panorama-detail.webp',
   culture: '/assets/images/red-culture/exhibition-calligraphy-detail.webp',
@@ -103,7 +103,7 @@ export const FALLBACK_IMAGES = Object.freeze({
   team: '/assets/images/team/team-platform-group-detail.webp',
   people: '/assets/images/people/figure-profile-display-a-detail.webp',
   news: '/assets/images/research/research-biography-display-detail.webp',
-  school: '/assets/images/commons/20240730-qingdao-campus-of-shandong-university-01-jpg.jpg',
+  school: '/assets/images/maogongshan/resource-021.jpg',
   route: '/assets/images/banners/mountain-road-hero.webp',
   resource: '/assets/images/party-history/info-overview-red-expansion.jpg',
   audio: '/assets/images/scenery/summit-terrace-panorama-detail.webp',

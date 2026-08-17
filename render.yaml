@@ -29,6 +29,10 @@ services:
         value: "12000"
       - key: LLM_MAX_TOKENS
         value: "900"
+      - key: WEB_SEARCH_PROVIDER
+        value: bing-rss
+      - key: WEB_SEARCH_TIMEOUT_SECONDS
+        value: "8"
       - key: ADMIN_PASSWORD
         generateValue: true
       - key: ADMIN_TOKEN

@@ -3,7 +3,7 @@
     <PageHero
       title="使用帮助"
       subtitle="面向课程展示、社会实践答辩和公众浏览的操作指南。"
-      image="/assets/images/commons/20240730-qingdao-campus-of-shandong-university-01-jpg.jpg"
+      image="/assets/images/maogongshan/resource-021.jpg"
     />
     <main class="page help-page">
       <section class="help-grid">

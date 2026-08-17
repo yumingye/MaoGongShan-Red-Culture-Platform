@@ -23,7 +23,7 @@ html[data-theme="forest"] { --theme-accent:#315f4b;--theme-tint:rgba(49,95,75,.1
 html[data-theme="history"] { --theme-accent:#8f1d22;--theme-tint:rgba(143,29,34,.10);--theme-image:url('/assets/images/party-history/info-overview-party-history.jpg'); }
 html[data-theme="exhibition"] { --theme-accent:#9b2429;--theme-tint:rgba(201,162,75,.12);--theme-image:url('/assets/images/red-culture/exhibition-calligraphy-detail.webp'); }
 html[data-theme="research"] { --theme-accent:#365b73;--theme-tint:rgba(54,91,115,.10);--theme-image:url('/assets/images/research/research-history-gallery-a-detail.webp'); }
-html[data-theme="school"] { --theme-accent:#2d5573;--theme-tint:rgba(45,85,115,.10);--theme-image:url('/assets/images/commons/20240730-qingdao-campus-of-shandong-university-01-jpg.jpg'); }
+html[data-theme="school"] { --theme-accent:#2d5573;--theme-tint:rgba(45,85,115,.10);--theme-image:url('/assets/images/maogongshan/resource-021.jpg'); }
 html[data-theme="ai"] { --theme-accent:#70423c;--theme-tint:rgba(112,66,60,.11);--theme-image:url('/assets/images/banners/mountain-view-west-hero.webp'); }
 html[data-theme="route"] { --theme-accent:#33634e;--theme-tint:rgba(51,99,78,.11);--theme-image:url('/assets/images/banners/mountain-road-hero.webp'); }
 html[data-theme="results"] { --theme-accent:#9b692f;--theme-tint:rgba(155,105,47,.11);--theme-image:url('/assets/images/research/research-history-gallery-a-detail.webp'); }
@@ -209,18 +209,35 @@ img {
 }
 
 .page-hero {
+  position: relative;
   min-height: clamp(260px, 34vw, 350px);
   display: grid;
   align-items: center;
   color: #fff8e6;
-  background-position: center;
-  background-size: cover;
   overflow: hidden;
   border-bottom: 1px solid rgba(201, 162, 75, .42);
   box-shadow: inset 0 -50px 70px rgba(49, 8, 11, .14);
 }
 
+.page-hero-media,
+.page-hero-shade {
+  position: absolute;
+  inset: 0;
+}
+
+.page-hero-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.page-hero-shade {
+  background: linear-gradient(105deg, rgba(45, 10, 13, .9), rgba(94, 24, 28, .68) 52%, rgba(17, 31, 31, .28));
+}
+
 .page-hero-content {
+  position: relative;
+  z-index: 1;
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
   padding: clamp(52px, 7vw, 76px) 0;

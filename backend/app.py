@@ -6,6 +6,7 @@ import re
 import secrets
 import shutil
 import sqlite3
+import time
 import unicodedata
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -66,6 +67,13 @@ except ImportError:
     from ai_service import LLMServiceError, generate_rag_answer, llm_status
 
 try:
+    from .retrieval_service import backfill_knowledge_metadata, hybrid_search, is_realtime_question
+    from .web_search import search_web
+except ImportError:
+    from retrieval_service import backfill_knowledge_metadata, hybrid_search, is_realtime_question
+    from web_search import search_web
+
+try:
     from .sync_practice_writings import sync_practice_writings
 except ImportError:
     from sync_practice_writings import sync_practice_writings
@@ -102,6 +110,7 @@ async def lifespan(_: FastAPI):
         sync_enriched_content()
         with get_conn() as conn:
             rebuild_knowledge_documents(conn)
+            backfill_knowledge_metadata(conn)
     except Exception:
         logger.exception("数据库初始化失败，服务将以降级状态启动")
     yield
@@ -222,6 +231,8 @@ class ChatTurn(InputModel):
 class ChatIn(InputModel):
     question: str = Field(min_length=1, max_length=300)
     history: list[ChatTurn] = Field(default_factory=list, max_length=12)
+    persona: Literal["assistant", "guide"] = "assistant"
+    web_search: bool | None = None
 
 
 def normalize_question_text(value: str) -> str:
@@ -586,6 +597,17 @@ def create_tables(conn: sqlite3.Connection) -> None:
     ensure_column(conn, "scenic_spots", "verification_status", "TEXT DEFAULT 'source_recorded'")
     ensure_column(conn, "scenic_spots", "address", "TEXT DEFAULT 'Chengyang Qingdao Maogongshan Area'")
     ensure_column(conn, "scenic_spots", "category", "TEXT DEFAULT 'spot'")
+    for column, definition in {
+        "topic": "TEXT DEFAULT 'extended_reference'",
+        "location": "TEXT DEFAULT ''",
+        "source_type": "TEXT DEFAULT 'reference'",
+        "authority": "TEXT DEFAULT 'secondary'",
+        "document_date": "TEXT DEFAULT ''",
+        "relevance": "REAL DEFAULT 0.2",
+        "tags": "TEXT DEFAULT ''",
+        "knowledge_level": "INTEGER DEFAULT 6",
+    }.items():
+        ensure_column(conn, "knowledge_documents", column, definition)
 
 
 def seed_data(conn: sqlite3.Connection) -> None:
@@ -669,6 +691,61 @@ def rebuild_knowledge_documents(conn: sqlite3.Connection) -> None:
             "",
             "平台公开问答",
         )
+    official_core_docs = [
+        {
+            "title": "毛公山权威概览：位置与自然环境",
+            "summary": "青岛政务网介绍，毛公山景区位于青岛市城阳区惜福镇街道，兼具山林生态、天然奇石与红色文化游览体验。",
+            "content": "青岛政务网2024年公开资料介绍，毛公山景区位于青岛市城阳区惜福镇街道，占地约3.2平方公里，森林覆盖率超过70%。这些数字对应2024年官方发布页面，引用时应保留资料日期。",
+            "category": "毛公山概况",
+            "source_name": "青岛政务网·青岛市文化和旅游局",
+            "source_url": "https://www.qingdao.gov.cn/zwgk/xxgk/whly/gkml/gzxx/202412/t20241226_8743493.shtml",
+        },
+        {
+            "title": "毛公山名称与天然山体景观",
+            "summary": "毛公山的名称与山顶天然形成、远观具有鲜明人物轮廓的山石景观相关。",
+            "content": "青岛政务网将景区核心自然景观介绍为天然形成的毛主席站立石像，并称石像高度约8.3米。介绍名称来源时应表述为山体轮廓带来的民间命名与文化认知，不把造型传说扩写成未经证实的历史事件。",
+            "category": "名称来源",
+            "source_name": "青岛政务网·青岛市文化和旅游局",
+            "source_url": "https://www.qingdao.gov.cn/zwgk/xxgk/whly/gkml/gzxx/202412/t20241226_8743493.shtml",
+        },
+        {
+            "title": "毛公山主要自然与人文看点",
+            "summary": "官方介绍列举天然山石、革命道路、山林环境及山下青峰社区的景村融合风貌。",
+            "content": "适合游客关注的看点包括山顶天然山石景观、约800米的革命道路及沿线山林视野，以及山下青峰社区形成的‘毛公山下、青峰人家’景村融合环境。游览应以现场开放区域和最新导览为准。",
+            "category": "景点介绍",
+            "source_name": "青岛政务网·青岛市文化和旅游局",
+            "source_url": "https://www.qingdao.gov.cn/zwgk/xxgk/whly/gkml/gzxx/202412/t20241226_8743493.shtml",
+        },
+        {
+            "title": "毛公山红色文化的形成方式",
+            "summary": "毛公山以天然山体意象为文化触点，并通过登山步道、主题展示和文旅建设形成红色文化体验空间。",
+            "content": "毛公山的红色文化体验主要来自天然山体意象、相关主题展示、革命道路叙事与当代文旅建设的结合。它适合作为地方红色文化传播和自然教育的场所，但不应把全国党史事件直接说成发生在毛公山。",
+            "category": "红色文化",
+            "source_name": "青岛政务网公开文旅资料与平台边界整理",
+            "source_url": "https://www.qingdao.gov.cn/zwgk/xxgk/whly/gkml/gzxx/202412/t20241226_8743493.shtml",
+        },
+        {
+            "title": "毛公山景区等级与资料日期",
+            "summary": "青岛政务网2024年12月26日发布消息，毛公山景区被确定为国家4A级旅游景区。",
+            "content": "青岛政务网资料显示，山东省文化和旅游厅于2024年12月24日确定青岛毛公山景区为国家4A级旅游景区。早期3A级报道属于历史阶段，回答当前等级时应采用更新的官方资料。",
+            "category": "景区发展",
+            "source_name": "青岛政务网·青岛市文化和旅游局",
+            "source_url": "https://www.qingdao.gov.cn/zwgk/xxgk/whly/gkml/gzxx/202412/t20241226_8743493.shtml",
+        },
+        {
+            "title": "毛公山出行与实时信息边界",
+            "summary": "毛公山可纳入青岛浅山生态和红色文化主题游线；开放、活动和交通应在出发前查询官方最新发布。",
+            "content": "青岛政务网2026年清明主题线路将毛公山景区列入登山踏青浅山生态之旅。该页面只证明当时的文旅推荐，不等于长期不变的开放承诺。回答今天是否开放、近期活动、临时交通等问题时必须进行联网检索。",
+            "category": "游览指南",
+            "source_name": "青岛政务网·青岛市文化和旅游局",
+            "source_url": "https://www.qingdao.gov.cn/zwgk/xxgk/whly/gkml/gzxx/202604/t20260407_10555293.shtml",
+        },
+    ]
+    for doc in official_core_docs:
+        upsert_knowledge(
+            conn, doc["title"], doc["summary"], doc["content"], doc["category"],
+            doc["source_name"], doc["source_url"], "", "", "官方公开资料",
+        )
 
 
 def init_db() -> None:
@@ -706,6 +783,7 @@ def init_db() -> None:
         # 启动时只同步本地信息图和已有媒体关系；联网下载由独立命令显式执行。
         sync_party_media(conn, allow_download=False)
         rebuild_knowledge_documents(conn)
+        backfill_knowledge_metadata(conn)
 
 
 def build_event_filters(keyword: str, title: str, event_time: str, location: str, person: str, category: str, verification_status: str) -> tuple[str, list[str]]:
@@ -1486,68 +1564,14 @@ def rebuild_knowledge():
     return {"ok": True, "total": total}
 
 
-def search_knowledge(conn: sqlite3.Connection, question: str, limit: int = 5) -> list[dict[str, Any]]:
-    question = normalize_question_text(question)
-    words = [word for word in re.sub(r"[，。！？、,.!?;；:：]", " ", question).split() if word]
-    domain_terms = [
-        "毛公山", "在哪里", "位置", "景色", "风景", "计划", "活动", "实践", "团队", "数字资源库",
-        "历史资料", "查询", "来源", "考证", "前往", "路线", "地图", "成果", "短视频",
-        "软件学院", "山东大学", "开发", "为什么", "技术路线", "系统架构", "红色故事", "红色文化", "游览",
-        "五四运动", "马克思主义", "中国共产党成立", "中共一大", "南昌起义", "秋收起义", "井冈山",
-        "古田会议", "红军长征", "长征", "遵义会议", "抗日战争", "延安", "西柏坡", "新中国成立",
-        "抗美援朝", "社会主义改造", "改革开放", "新时代", "建党精神", "井冈山精神", "长征精神",
-        "延安精神", "西柏坡精神", "雷锋精神", "焦裕禄精神", "两弹一星精神", "沂蒙精神",
-        "脱贫攻坚精神", "抗疫精神", "科学家精神", "青年使命", "青岛红色", "山东红色",
-        "平台", "功能", "数字展馆", "图片", "视频", "加载失败", "老年人", "安全",
-        "编造", "编造历史", "真实性", "核验", "访谈记录", "社会实践成果",
-    ]
-    words.extend([term for term in domain_terms if term in question])
-    if not words:
-        words = [question]
-    rows = rows_to_list(conn.execute("SELECT * FROM knowledge_documents ORDER BY id DESC").fetchall())
-    # 实时开放时间、票价和预约等信息变化快；知识库没有明确字段时不返回相似主题凑答案。
-    precision_terms = ["开放时间", "票价", "联系电话", "预约", "实时天气", "公交班次", "月球", "火星"]
-    requested_precision_terms = [term for term in precision_terms if term in question]
-    if requested_precision_terms:
-        corpus = " ".join(f"{row.get('title','')} {row.get('summary','')} {row.get('content','')}" for row in rows)
-        if any(term not in corpus for term in requested_precision_terms):
-            return []
-    scored: list[tuple[int, dict[str, Any]]] = []
-    question_bigrams = text_bigrams(question)
-    for row in rows:
-        text = f"{row.get('title','')} {row.get('summary','')} {row.get('content','')} {row.get('category','')}"
-        score = sum(text.count(word) for word in words)
-        title = row.get("title", "")
-        overlap = len(question_bigrams & text_bigrams(f"{title} {row.get('summary', '')}"))
-        if overlap >= 2:
-            score += overlap * 2
-        similarity = SequenceMatcher(None, question, title).ratio()
-        if similarity >= 0.35:
-            score += max(2, round(similarity * 10))
-        for term in domain_terms:
-            if term in question and term in title:
-                score += 40
-        if ("计划" in question or "活动" in question or "实践" in question) and row.get("category") == "实践计划":
-            score += 8
-        if ("团队" in question or "项目" in question or "谁开发" in question) and row.get("category") in ["项目介绍", "实践过程", "技术介绍"]:
-            score += 8
-        if ("软件学院" in question or "山东大学" in question or "为什么" in question or "技术路线" in question or "系统架构" in question) and ("软件学院" in text or "山东大学" in text or "Vue" in text or "FastAPI" in text):
-            score += 14
-        if ("哪里" in question or "位置" in question or "前往" in question or "路线" in question) and row.get("category") == "景点导览":
-            score += 6
-        if ("怎么游览" in question or "游览" in question or "路线" in question or "前往" in question) and row.get("category") in ["游览路线", "游览攻略", "登山路线"]:
-            score += 12
-        if ("红色故事" in question or "红色文化" in question or "红色" in question) and row.get("category") in ["红色文化", "景区发展", "新闻报道"]:
-            score += 12
-        if ("资源库" in question or "有哪些内容" in question) and row.get("category") == "数字资源":
-            score += 6
-        # 中文短问题常没有空格，额外做包含匹配。
-        if question and question in text:
-            score += 5
-        if score:
-            scored.append((score, row))
-    scored.sort(key=lambda item: item[0], reverse=True)
-    return [row for _, row in scored[:limit]]
+def search_knowledge(
+    conn: sqlite3.Connection,
+    question: str,
+    limit: int = 6,
+    history: list[dict[str, str]] | None = None,
+) -> list[dict[str, Any]]:
+    docs, _, _ = hybrid_search(conn, normalize_question_text(question), history, limit)
+    return docs
 
 
 def school_knowledge_docs() -> list[dict[str, Any]]:
@@ -1575,7 +1599,10 @@ def source_payload(docs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     seen: set[tuple[str, str]] = set()
     for doc in docs[:6]:
         title = str(doc.get("title") or "资源库资料")
-        url = str(doc.get("source_url") or "/sources")
+        url = str(doc.get("source_url") or "")
+        if not url:
+            match = re.search(r"https?://[^\s，。；;]+", str(doc.get("source_name") or ""))
+            url = match.group(0) if match else "/sources"
         key = (title, url)
         if key in seen:
             continue
@@ -1586,6 +1613,9 @@ def source_payload(docs: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "source_name": doc.get("source_name") or "毛公山数字资源库",
                 "source_url": url,
                 "verification_status": doc.get("verification_status") or "来源已标注",
+                "source_type": doc.get("source_type") or "knowledge_base",
+                "date": doc.get("document_date") or "",
+                "knowledge_level": doc.get("knowledge_level"),
             }
         )
     return sources
@@ -1652,27 +1682,47 @@ def chat_status():
     except sqlite3.Error:
         status["knowledge_documents"] = 0
     status["fallback_available"] = True
+    status["personas"] = ["assistant", "guide"]
+    status["retrieval"] = "bm25_keyword_metadata_rerank"
+    status["web_search"] = "bing_rss_trusted_sources"
     return status
 
 
 @app.post("/api/chat")
 def chat(payload: ChatIn):
+    started_at = time.monotonic()
     question = normalize_question_text(payload.question)
     if not question:
         raise HTTPException(status_code=400, detail="问题不能为空")
     with get_conn() as conn:
-        docs = search_knowledge(conn, question)
+        history = [turn.model_dump() for turn in payload.history]
+        docs, retrieval_quality, _ = hybrid_search(conn, question, history, 6)
         school_terms = ["软件学院", "山东大学", "谁开发", "为什么做", "技术路线", "系统架构", "山软青年"]
         if any(term in question for term in school_terms):
             docs = (school_knowledge_docs() + docs)[:5]
+            retrieval_quality = "high"
+        web_search_used = False
+        should_search_web = payload.web_search is True or (payload.web_search is not False and is_realtime_question(question))
+        if should_search_web:
+            web_docs = search_web(question)
+            if web_docs:
+                docs = (web_docs + docs)[:7]
+                web_search_used = True
+                retrieval_quality = "high" if len(web_docs) >= 2 else "partial"
         sources = source_payload(docs)
         mode = "local_retrieval"
         degraded = False
         notice = ""
         provider_error = ""
-        history = [turn.model_dump() for turn in payload.history]
         try:
-            answer = generate_rag_answer(question, docs, history)
+            answer = generate_rag_answer(
+                question,
+                docs,
+                history,
+                persona=payload.persona,
+                retrieval_quality=retrieval_quality,
+                web_search_used=web_search_used,
+            )
             mode = "rag_llm"
         except LLMServiceError as error:
             answer = local_retrieval_answer(docs)
@@ -1683,6 +1733,12 @@ def chat(payload: ChatIn):
                 logger.warning("RAG generation degraded to local retrieval: %s", error)
         if not READ_ONLY_MODE:
             conn.execute("INSERT INTO chat_records(question, answer, mode, created_at) VALUES (?, ?, ?, ?)", (question, answer, mode, now_text()))
+    status = llm_status()
+    latency_ms = round((time.monotonic() - started_at) * 1000)
+    logger.info(
+        "AI request completed persona=%s mode=%s provider=%s model=%s rag_used=%s web_search_used=%s degraded=%s retrieved_docs=%s latency_ms=%s",
+        payload.persona, mode, status["provider"], status["model"], bool(docs), web_search_used, degraded, len(docs), latency_ms,
+    )
     return {
         "answer": answer,
         "sources": sources,
@@ -1691,6 +1747,14 @@ def chat(payload: ChatIn):
         "notice": notice,
         "provider_error": provider_error,
         "follow_up_suggestions": follow_up_suggestions(question, docs),
+        "persona": payload.persona,
+        "provider": status["provider"],
+        "model": status["model"],
+        "rag_used": bool(docs),
+        "web_search_used": web_search_used,
+        "retrieval_quality": retrieval_quality,
+        "retrieved_docs": len(docs),
+        "latency_ms": latency_ms,
     }
 
 

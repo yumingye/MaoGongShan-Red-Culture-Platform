@@ -134,15 +134,18 @@ def main() -> int:
             method="POST",
             body={
                 "question": "那它还有哪些特色？",
+                "persona": "guide",
                 "history": [
                     {"role": "user", "content": "毛公山在哪里？"},
                     {"role": "assistant", "content": "请以资料库来源为准。"},
                 ],
             },
         )
-        expected = {"answer", "sources", "mode", "degraded", "notice", "provider_error", "follow_up_suggestions"}
+        expected = {"answer", "sources", "mode", "degraded", "notice", "provider_error", "follow_up_suggestions", "persona", "rag_used", "web_search_used", "retrieval_quality", "latency_ms"}
         if not expected.issubset(payload):
             raise AssertionError(f"missing chat response fields: {sorted(expected - set(payload))}")
+        if payload.get("persona") != "guide":
+            raise AssertionError("guide persona was not preserved")
     check("chat multi-turn response contract", chat_history_check)
 
     def unknown_qa_check():

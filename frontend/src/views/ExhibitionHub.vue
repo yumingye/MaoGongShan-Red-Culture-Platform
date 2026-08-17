@@ -28,7 +28,7 @@ import { exhibitions } from '../data/experienceContent'
 const activeCategory=ref('全部')
 const categories=computed(()=>['全部',...new Set(exhibitions.map(i=>i.category))])
 const filtered=computed(()=>activeCategory.value==='全部'?exhibitions:exhibitions.filter(i=>i.category===activeCategory.value))
-const heroFrames=exhibitions.slice(0,3).map(i=>i.image)
+const heroFrames=['/assets/images/generated/museum-digital-v2-wide.webp', ...exhibitions.slice(0,2).map(i=>i.image)]
 const heroCaptions=['沿历史脉络理解红色文化，而不是孤立背诵结论。','让人物、事件、地点和精神在数字空间中相互连接。','用可追溯资料和软件工程守护文化记忆。']
 </script>
 

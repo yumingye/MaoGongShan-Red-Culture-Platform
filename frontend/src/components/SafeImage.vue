@@ -8,8 +8,12 @@
       v-if="!hideImage"
       :key="requestKey"
       :src="currentSrc"
+      :srcset="currentSrc === originalSrc ? srcset : ''"
+      :sizes="sizes"
       :alt="alt"
       :loading="loading"
+      :fetchpriority="fetchpriority"
+      decoding="async"
       :style="{ objectFit: fit }"
       @load="handleLoad"
       @error="handleError"
@@ -30,6 +34,9 @@ const props = defineProps({
   alt: { type: String, default: '文化资源图片' },
   fit: { type: String, default: 'cover' },
   loading: { type: String, default: 'lazy' },
+  fetchpriority: { type: String, default: 'auto' },
+  srcset: { type: String, default: '' },
+  sizes: { type: String, default: '100vw' },
   fallback: { type: String, default: '' },
   kind: { type: String, default: 'default' },
   timeout: { type: Number, default: 12000 },

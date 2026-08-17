@@ -3,7 +3,8 @@
     <PageHero
       title="团队介绍"
       subtitle="山软寻脉·毛公山数字调研实践团成员、职责与实践现场。"
-      :image="teamPhoto.detail_url"
+      image="/assets/images/generated/youth-fieldwork-v2-wide.webp"
+      mobile-image="/assets/images/generated/youth-fieldwork-v2-mobile.webp"
       eyebrow="山东大学软件学院 · 青年实践"
     />
     <main class="page">

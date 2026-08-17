@@ -11,7 +11,7 @@ export const supplementalImages = Object.freeze({
     processing: '已下载到本地并压缩'
   },
   sduQingdaoCampus: {
-    path: '/assets/images/commons/20240730-qingdao-campus-of-shandong-university-01-jpg.jpg',
+    path: '/assets/images/maogongshan/resource-021.jpg',
     title: '山东大学青岛校区当代实景',
     description: '用于山东大学软件学院实践专题，展示学校公共校园环境；不表示毛公山调研现场。',
     alt: '山东大学青岛校区校园建筑实景',

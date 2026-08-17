@@ -3,7 +3,7 @@ const covers = [
   '/assets/images/commons/liberation-pavillion-jinan-2008-11-jpg.jpg',
   '/assets/images/commons/2024-04-longhua-revolutionary-martyr-memorial-14-jpg.jpg',
   '/assets/images/commons/national-shandong-university-qingdao-jpg.jpg',
-  '/assets/images/commons/20240730-qingdao-campus-of-shandong-university-01-jpg.jpg',
+  '/assets/images/maogongshan/resource-021.jpg',
   '/assets/images/culture/maogongshan-red-park-2022.jpg',
   '/assets/images/scenery/maogongshan-mountain.jpg',
   '/assets/images/activity/maogongshan-3a-plaque.jpg'
@@ -70,7 +70,7 @@ const lessonDefinitions = [
 const lessonMedia = {
   'party-century': [
     ['/assets/images/party-history/info-may-fourth.jpg', '项目自制', '五四运动与马克思主义传播专题信息图'],
-    ['/assets/images/party-history/party-founding.jpg', '革命旧址照片', '上海中共一大会址当代实景，不是1921年历史现场照片'],
+    ['/assets/images/party-history/first-congress.jpg', '革命旧址照片', '上海中共一大会址当代实景，不是1921年历史现场照片'],
     ['/assets/images/party-history/info-reform-opening.jpg', '项目自制', '改革开放专题信息图']
   ],
   'long-march-route': [
@@ -105,7 +105,7 @@ const lessonMedia = {
   ],
   'software-practice': [
     ['/assets/images/commons/national-shandong-university-qingdao-jpg.jpg', '校史资料', '国立山东大学青岛时期相关历史建筑资料'],
-    ['/assets/images/commons/20240730-qingdao-campus-of-shandong-university-01-jpg.jpg', '当代实景', '山东大学青岛校区当代实景'],
+    ['/assets/images/maogongshan/resource-021.jpg', '当代实景', '山东大学青岛校区当代实景'],
     ['/assets/images/party-history/info-social-practice-spirit.jpg', '项目自制', '大学生社会实践精神信息图']
   ],
   'source-check': [
@@ -116,7 +116,7 @@ const lessonMedia = {
   'youth-learning': [
     ['/assets/images/party-history/info-youth-mission.jpg', '项目自制', '新时代青年使命专题信息图'],
     ['/assets/images/party-history/info-social-practice-spirit.jpg', '项目自制', '大学生社会实践精神信息图'],
-    ['/assets/images/commons/20240730-qingdao-campus-of-shandong-university-01-jpg.jpg', '当代实景', '山东大学校园当代实景']
+    ['/assets/images/maogongshan/resource-021.jpg', '当代实景', '山东大学校园当代实景']
   ],
   'hero-stories': [
     ['/assets/images/party-history/info-leifeng-spirit.jpg', '项目自制', '雷锋精神专题信息图，不冒充人物照片'],
@@ -126,7 +126,7 @@ const lessonMedia = {
   'platform-guide': [
     ['/assets/images/scenery/maogongshan-mountain.jpg', '毛公山实景', '平台毛公山核心资源入口'],
     ['/assets/images/party-history/info-party-founding.jpg', '项目自制', '平台党史学习专题入口'],
-    ['/assets/images/commons/20240730-qingdao-campus-of-shandong-university-01-jpg.jpg', '当代实景', '山东大学实践专题入口']
+    ['/assets/images/maogongshan/resource-021.jpg', '当代实景', '山东大学实践专题入口']
   ]
 }
 

@@ -14,6 +14,9 @@
             :src="slide.hero_url"
             :alt="slide.alt"
             :loading="index === 0 ? 'eager' : 'lazy'"
+            :fetchpriority="index === 0 ? 'high' : 'auto'"
+            :srcset="slide.srcset || ''"
+            sizes="100vw"
             :timeout="15000"
           />
           <div class="hero-slide-shade"></div>
@@ -298,9 +301,17 @@ const stats = ref({ images: photoLibrary.images.length, resources: photoLibrary.
 const motionFrames = videoLessons[0].frames
 const motionCaptions = ['让历史节点沿时间线逐步点亮。', '用本地影像和清晰字幕组织微课内容。', '通过问答、收藏和闯关形成个人学习路径。']
 
-const heroSlides = computed(() => photoLibrary.hero_slugs
+const generatedHero = {
+  slug: 'home-cinematic-v2',
+  title: '云海晨光中的山林意境',
+  description: '从毛公山出发，在山水、地方记忆与数字文化之间建立新的观看方式。',
+  hero_url: '/assets/images/generated/home-cinematic-v2-wide.webp',
+  srcset: '/assets/images/generated/home-cinematic-v2-mobile.webp 900w, /assets/images/generated/home-cinematic-v2-wide.webp 1920w',
+  alt: '晨光与云海交织的山林数字视觉'
+}
+const heroSlides = computed(() => [generatedHero, ...photoLibrary.hero_slugs
   .map((slug) => photoLibrary.images.find((item) => item.slug === slug))
-  .filter(Boolean))
+  .filter(Boolean)])
 const activeHero = computed(() => heroSlides.value[currentHero.value] || {
   title: '毛公山实景',
   description: '青岛市城阳区毛公山红色文化数字资源平台'

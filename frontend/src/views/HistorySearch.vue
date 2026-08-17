@@ -3,7 +3,8 @@
     <PageHero
       title="红色历史资料查询"
       subtitle="支持关键词、分类、时间、地点和考证状态筛选，资料详情页保留来源、参考资料和相关推荐。"
-      image="/assets/images/activity/maogongshan-3a-plaque.jpg"
+      image="/assets/images/generated/history-archive-v2-wide.webp"
+      mobile-image="/assets/images/generated/history-archive-v2-mobile.webp"
       eyebrow="Red History Archive"
     />
     <main class="page">

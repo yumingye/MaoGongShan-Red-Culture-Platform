@@ -1,6 +1,6 @@
 <template>
   <div class="learning-hub">
-    <PageHero :title="pageTitle" :subtitle="pageSubtitle" :image="heroImage" eyebrow="红色文化数字学习馆" />
+    <PageHero :title="pageTitle" :subtitle="pageSubtitle" :image="heroImage" mobile-image="/assets/images/generated/red-culture-gallery-v2-mobile.webp" eyebrow="红色文化数字学习馆" />
 
     <main class="page">
       <el-alert

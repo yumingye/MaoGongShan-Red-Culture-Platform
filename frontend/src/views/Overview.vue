@@ -3,7 +3,8 @@
     <PageHero
       title="毛公山概览"
       subtitle="从位置、山体、风景、路线、文化价值和教育价值认识毛公山，并进入多个二级专题继续阅读。"
-      image="/assets/images/scenery/maogongshan-mountain.jpg"
+      image="/assets/images/generated/overview-forest-v2-wide.webp"
+      mobile-image="/assets/images/generated/overview-forest-v2-mobile.webp"
       eyebrow="Maogongshan Overview"
     />
     <main class="page">

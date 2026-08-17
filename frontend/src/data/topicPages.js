@@ -215,7 +215,7 @@ export const topicPages = {
     title: '青年责任与数字传承',
     subtitle: '以青年视角把红色文化资料整理成可长期访问、可持续扩展的数字平台。',
     category: '山软青年',
-    image: '/assets/images/commons/20240730-qingdao-campus-of-shandong-university-01-jpg.jpg',
+    image: '/assets/images/maogongshan/resource-021.jpg',
     source: '实践团队整理',
     tags: ['青年责任', '数字传承', '文化保护'],
     sections: [
@@ -313,7 +313,7 @@ export const topicPages = {
     title: '山软青年图集',
     subtitle: '展示山东大学、软件学院、技术实践和青年服务主题图片。',
     category: '全景图库',
-    image: '/assets/images/commons/20240730-qingdao-campus-of-shandong-university-01-jpg.jpg',
+    image: '/assets/images/maogongshan/resource-021.jpg',
     source: '山东大学公开资料与项目整理',
     tags: ['山东大学', '软件学院', '青年实践'],
     sections: [

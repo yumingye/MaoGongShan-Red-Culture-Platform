@@ -57,14 +57,18 @@ def main() -> int:
     with patch.multiple(ai_service, **configured):
         assert ai_service.llm_status()["transport"] == "urllib-safe-redirect-v1"
         assert ai_service._endpoint() == "https://example.invalid/v1/chat/completions"
-        assert ai_service.generate_rag_answer("未知问题", []) == "当前资源库暂未收录足够资料。"
+        with patch.object(ai_service._HTTP_OPENER, "open", return_value=FakeResponse({"choices": [{"message": {"content": "可说明的部分会继续回答。"}}]})) as mocked_empty:
+            assert ai_service.generate_rag_answer("未知问题", [], persona="guide", retrieval_quality="none") == "可说明的部分会继续回答。"
+            empty_body = json.loads(mocked_empty.call_args.args[0].data.decode("utf-8"))
+            assert "未检索到可用" in empty_body["messages"][-1]["content"]
+            assert "数字讲解员" in empty_body["messages"][0]["content"]
         with patch.object(ai_service._HTTP_OPENER, "open", return_value=FakeResponse({"choices": [{"message": {"content": "仅依据资料库回答。"}}]})) as mocked:
             answer = ai_service.generate_rag_answer("毛公山在哪里？", DOCS, [{"role": "user", "content": "请介绍毛公山"}])
             assert answer == "仅依据资料库回答。"
             request = mocked.call_args.args[0]
             body = json.loads(request.data.decode("utf-8"))
             assert body["model"] == "test-model"
-            assert "知识库资料" in body["messages"][-1]["content"]
+            assert "知识库与联网资料" in body["messages"][-1]["content"]
 
         redirect = redirect_error(
             "https://example.invalid/v1/chat/completions",

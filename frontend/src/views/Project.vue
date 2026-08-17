@@ -3,7 +3,8 @@
     <PageHero
       title="实践项目介绍"
       subtitle="山软寻脉·毛公山数字调研实践团公开信息与资源库建设思路展示。"
-      image="/assets/images/commons/national-shandong-university-qingdao-jpg.jpg"
+      image="/assets/images/generated/youth-fieldwork-v2-wide.webp"
+      mobile-image="/assets/images/generated/youth-fieldwork-v2-mobile.webp"
     />
     <main class="page">
       <SectionTitle title="项目基本信息" desc="围绕红色文化数字化保护、社会实践调研和青年传播能力建设整理。" />

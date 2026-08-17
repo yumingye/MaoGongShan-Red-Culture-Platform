@@ -3,7 +3,8 @@
     <PageHero
       title="软件赋能红色文化传承"
       subtitle="山东大学软件学院学生以软件工程、数据治理、地图导览和智能问答技术建设毛公山数字资源平台。"
-      image="/assets/images/commons/20240730-qingdao-campus-of-shandong-university-01-jpg.jpg"
+      image="/assets/images/generated/youth-fieldwork-v2-wide.webp"
+      mobile-image="/assets/images/generated/youth-fieldwork-v2-mobile.webp"
       eyebrow="山东大学软件学院专题"
     />
     <main class="page">
@@ -75,7 +76,7 @@ onMounted(async () => {
   color: #fff8e6;
   background:
     linear-gradient(120deg, rgba(84, 16, 21, .94), rgba(25, 65, 86, .82)),
-    url('/assets/images/commons/20240730-qingdao-campus-of-shandong-university-01-jpg.jpg') center/cover;
+    url('/assets/images/maogongshan/resource-021.jpg') center/cover;
 }
 
 .school-hero h1 {

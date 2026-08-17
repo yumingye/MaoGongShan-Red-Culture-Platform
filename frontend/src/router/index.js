@@ -60,7 +60,7 @@ const routes = [
       title: '红色党史学习',
       subtitle: '按历史时期、重要会议和重大事件建立可追溯的学习路径。',
       category: '党史学习',
-      hero: '/assets/images/party-history/info-overview-party-history.jpg'
+      hero: '/assets/images/generated/red-culture-gallery-v2-wide.webp'
     }
   },
   {
@@ -70,7 +70,7 @@ const routes = [
       title: '红色事件',
       subtitle: '从时代背景、主要过程、历史意义和青年启示理解重大历史节点。',
       category: '红色事件',
-      hero: '/assets/images/party-history/info-overview-red-events.jpg'
+      hero: '/assets/images/generated/history-archive-v2-wide.webp'
     }
   },
   {
@@ -80,7 +80,7 @@ const routes = [
       title: '中国共产党人精神谱系',
       subtitle: '以公开发布的精神谱系资料为依据，连接历史实践与青年责任。',
       category: '红色精神',
-      hero: '/assets/images/party-history/info-overview-red-spirit.jpg'
+      hero: '/assets/images/generated/red-culture-gallery-v2-wide.webp'
     }
   },
   {
@@ -89,7 +89,7 @@ const routes = [
     props: {
       title: '红色文化拓展馆',
       subtitle: '汇聚全国党史、山东与青岛红色文化、山大实践专题，并明确资料边界。',
-      hero: '/assets/images/party-history/info-overview-red-expansion.jpg'
+      hero: '/assets/images/generated/museum-digital-v2-wide.webp'
     }
   },
   { path: '/learning/:id', component: views.LearningDetail },

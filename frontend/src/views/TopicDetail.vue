@@ -91,7 +91,7 @@ const props = defineProps({
 })
 
 const route = useRoute()
-const fallbackImage = '/assets/images/fallback/fallback-real-scenery.jpg'
+const fallbackImage = '/assets/images/scenery/maogongshan-mountain.jpg'
 const topic = computed(() => getTopicPage(props.fixedSlug || `${props.slugPrefix}${route.params.slug || ''}`))
 
 const routeLabels = {

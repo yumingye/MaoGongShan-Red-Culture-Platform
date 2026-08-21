@@ -49,10 +49,13 @@ READ_ONLY_MODE = os.getenv("READ_ONLY_MODE", "false").lower() in {"1", "true", "
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "").strip()
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "").strip().rstrip("/")
-LLM_API_KEY = os.getenv("LLM_API_KEY", "").strip()
-LLM_MODEL = os.getenv("LLM_MODEL", "").strip()
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "deepseek").strip()
+# DEEPSEEK_* is the public deployment contract.  Keep the older LLM_* names
+# as backwards-compatible aliases so an existing Render service does not lose
+# its configuration during this upgrade.
+LLM_BASE_URL = (os.getenv("DEEPSEEK_BASE_URL") or os.getenv("LLM_BASE_URL") or "https://api.deepseek.com").strip().rstrip("/")
+LLM_API_KEY = (os.getenv("DEEPSEEK_API_KEY") or os.getenv("LLM_API_KEY") or "").strip()
+LLM_MODEL = (os.getenv("DEEPSEEK_MODEL") or os.getenv("LLM_MODEL") or "deepseek-chat").strip()
 LLM_TIMEOUT_SECONDS = min(max(float(os.getenv("LLM_TIMEOUT_SECONDS", "18")), 5), 60)
 LLM_MAX_CONTEXT_CHARS = min(max(int(os.getenv("LLM_MAX_CONTEXT_CHARS", "12000")), 2000), 30000)
 LLM_MAX_TOKENS = min(max(int(os.getenv("LLM_MAX_TOKENS", "900")), 200), 2000)

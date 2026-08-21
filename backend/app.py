@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import re
 import secrets
@@ -16,7 +17,7 @@ from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, ConfigDict, Field
@@ -62,9 +63,9 @@ except ImportError:
     from sync_public_team_members import sync_team_members
 
 try:
-    from .ai_service import LLMServiceError, generate_rag_answer, llm_status
+    from .ai_service import LLMServiceError, llm_status, stream_answer, user_error_message
 except ImportError:
-    from ai_service import LLMServiceError, generate_rag_answer, llm_status
+    from ai_service import LLMServiceError, llm_status, stream_answer, user_error_message
 
 try:
     from .retrieval_service import backfill_knowledge_metadata, classify_question, hybrid_search
@@ -231,8 +232,8 @@ class ChatTurn(InputModel):
 class ChatIn(InputModel):
     question: str = Field(min_length=1, max_length=300)
     history: list[ChatTurn] = Field(default_factory=list, max_length=12)
-    persona: Literal["assistant", "guide"] = "assistant"
-    web_search: bool | None = None
+    # Chat uses SSE; the non-stream response is kept for the existing guide page.
+    stream: bool = False
 
 
 def normalize_question_text(value: str) -> str:
@@ -1676,113 +1677,45 @@ def chat_suggestions():
 @app.get("/api/chat/status")
 def chat_status():
     status = llm_status()
-    try:
-        with get_conn() as conn:
-            status["knowledge_documents"] = conn.execute("SELECT COUNT(*) FROM knowledge_documents").fetchone()[0]
-    except sqlite3.Error:
-        status["knowledge_documents"] = 0
-    status["fallback_available"] = True
-    status["personas"] = ["assistant", "guide"]
-    status["retrieval"] = "bm25_keyword_metadata_rerank"
-    status["web_search"] = "qingdao_government_with_so_bing_fallback_tiered_cached"
-    status["routing"] = "web_first_except_project_and_database"
-    status["retrieval_version"] = "web-first-v3.2-folklore-filtered"
+    status["streaming"] = True
+    status["fallback_available"] = False
+    status["context_policy"] = "最近 10 条消息，每条最多 1800 字符"
     return status
 
 
 @app.post("/api/chat")
 def chat(payload: ChatIn):
-    started_at = time.monotonic()
     question = normalize_question_text(payload.question)
     if not question:
         raise HTTPException(status_code=400, detail="问题不能为空")
-    with get_conn() as conn:
-        history = [turn.model_dump() for turn in payload.history]
-        intent = classify_question(question)
-        rag_first = intent in {"project_info", "university_practice", "database_query"}
-        search_strategy = "rag_first" if rag_first else "web_required" if intent == "realtime" else "web_first"
-        should_search_web = payload.web_search is True or (payload.web_search is not False and not rag_first)
-        web_search_used = should_search_web
-        web_cache_hit = False
-        web_docs: list[dict[str, Any]] = []
-        if should_search_web:
-            web_docs, web_cache_hit = search_web_with_meta(question, 5)
-        web_search_results = len(web_docs)
+    history = [turn.model_dump() for turn in payload.history]
 
-        rag_docs: list[dict[str, Any]] = []
-        rag_quality = "none"
-        # Web is primary. RAG supplies project-owned facts or fills a thin/failed public search.
-        should_search_rag = rag_first or len(web_docs) < 3
-        if should_search_rag:
-            rag_docs, rag_quality, _ = hybrid_search(conn, question, history, 6)
-        school_terms = ["软件学院", "山东大学", "谁开发", "为什么做", "技术路线", "系统架构", "山软青年"]
-        if any(term in question for term in school_terms):
-            rag_docs = (school_knowledge_docs() + rag_docs)[:6]
-            rag_quality = "high"
-        rag_used = bool(rag_docs)
-        docs = (web_docs + rag_docs)[:7]
-        if len(web_docs) >= 2:
-            retrieval_quality = "high"
-        elif rag_quality != "none":
-            retrieval_quality = rag_quality
-        else:
-            retrieval_quality = "none"
-        sources = source_payload(docs)
-        mode = "local_retrieval"
-        degraded = False
-        notice = ""
-        provider_error = ""
+    def event(name: str, data: dict[str, Any]) -> str:
+        return f"event: {name}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+    def generate_events():
+        answer = ""
         try:
-            answer = generate_rag_answer(
-                question,
-                docs,
-                history,
-                persona=payload.persona,
-                retrieval_quality=retrieval_quality,
-                web_search_used=web_search_used,
-                intent=intent,
-                search_strategy=search_strategy,
-            )
-            mode = "web_rag_llm" if web_docs and rag_docs else "web_llm" if web_docs else "rag_llm" if rag_docs else "llm"
+            for delta in stream_answer(question, history):
+                answer += delta
+                yield event("delta", {"content": delta})
+            if not answer:
+                raise LLMServiceError("AI 服务未返回有效内容")
+            if not READ_ONLY_MODE:
+                with get_conn() as conn:
+                    conn.execute("INSERT INTO chat_records(question, answer, mode, created_at) VALUES (?, ?, ?, ?)", (question, answer, "deepseek", now_text()))
+            yield event("done", {"mode": "deepseek", "provider": "deepseek"})
         except LLMServiceError as error:
-            answer = local_retrieval_answer(docs)
-            degraded = llm_status()["configured"]
-            if degraded:
-                provider_error = str(error)
-                notice = "大模型服务暂时不可用，已自动切换为本地知识库回答。"
-                logger.warning("RAG generation degraded to local retrieval: %s", error)
-        if not READ_ONLY_MODE:
-            conn.execute("INSERT INTO chat_records(question, answer, mode, created_at) VALUES (?, ?, ?, ?)", (question, answer, mode, now_text()))
-    status = llm_status()
-    latency_ms = round((time.monotonic() - started_at) * 1000)
-    logger.info(
-        "AI request completed query=%s intent=%s persona=%s mode=%s provider=%s model=%s web_search_used=%s web_results_count=%s web_sources_used=%s web_cache_hit=%s rag_used=%s rag_docs_count=%s degraded=%s latency_ms=%s",
-        question[:120].replace("\n", " "), intent, payload.persona, mode, status["provider"], status["model"],
-        web_search_used, web_search_results, len(web_docs), web_cache_hit, rag_used, len(rag_docs), degraded, latency_ms,
-    )
-    return {
-        "answer": answer,
-        "sources": sources,
-        "mode": mode,
-        "degraded": degraded,
-        "notice": notice,
-        "provider_error": provider_error,
-        "follow_up_suggestions": follow_up_suggestions(question, docs),
-        "persona": payload.persona,
-        "provider": status["provider"],
-        "model": status["model"],
-        "intent": intent,
-        "search_strategy": search_strategy,
-        "rag_used": rag_used,
-        "rag_docs_count": len(rag_docs),
-        "web_search_used": web_search_used,
-        "web_search_results": web_search_results,
-        "web_sources_used": len(web_docs),
-        "web_cache_hit": web_cache_hit,
-        "retrieval_quality": retrieval_quality,
-        "retrieved_docs": len(docs),
-        "latency_ms": latency_ms,
-    }
+            # Never emit a local-answer substitute: this is the only failure path.
+            yield event("error", {"message": user_error_message(error)})
+
+    if payload.stream:
+        return StreamingResponse(generate_events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    try:
+        answer = "".join(stream_answer(question, history))
+        return {"answer": answer, "mode": "deepseek", "provider": "deepseek"}
+    except LLMServiceError as error:
+        raise HTTPException(status_code=503, detail=user_error_message(error)) from error
 
 
 @app.get("/api/search")

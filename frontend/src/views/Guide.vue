@@ -83,21 +83,20 @@ async function ask() {
   messages.value.push({ role: 'user', content: text })
   question.value = ''
   asking.value = true
-  statusText.value = '正在检索毛公山资料并组织讲解…'
+  statusText.value = 'AI 正在组织讲解…'
   try {
     const res = await http.post('/api/chat', { question: text, history, persona: 'guide' }, { timeout: GUIDE_REQUEST_TIMEOUT_MS })
     messages.value.push({
       role: 'assistant',
       content: res.data?.answer || '暂时没有取得有效讲解，请稍后重试。',
-      sources: res.data?.sources || [],
-      mode: res.data?.mode,
+      sources: [],
+      mode: 'deepseek',
     })
-    statusText.value = res.data?.degraded
-      ? '模型服务暂时降级，当前内容来自本地知识库。'
-      : `${res.data?.model || 'DeepSeek'} · ${res.data?.web_search_results > 0 ? '已联网核验' : (res.data?.web_search_used ? '已联网检索，暂无可靠结果' : '本地知识增强')} · ${res.data?.latency_ms || 0} ms`
+    statusText.value = '讲解由 AI 生成'
   } catch {
-    messages.value.push({ role: 'assistant', content: '问答服务暂时无法连接。你仍可播放下方已有讲解，或稍后重试。', sources: [] })
-    statusText.value = '讲解服务连接失败'
+    // Existing narrated tour content remains available below, but it is never
+    // inserted into the AI conversation as a substitute model answer.
+    statusText.value = 'AI 服务暂时不可用，请稍后再试。'
   } finally {
     asking.value = false
   }
